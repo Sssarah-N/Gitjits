@@ -1,6 +1,13 @@
 import pytest
 
-import queries as qry
+from cities import queries as qry
+
+
+@pytest.fixture(autouse=True)
+def reset_cache():
+    """Reset city cache before each test to ensure test isolation."""
+    qry.city_cache.clear()
+    yield
 
 
 def test_good_create():

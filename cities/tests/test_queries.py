@@ -25,3 +25,13 @@ def test_create_bad_name():
 def test_create_bad_param_type():
     with pytest.raises(ValueError):
         qry.create(17)
+
+
+def test_update():
+    city_id = qry.create({qry.NAME: "Boston", qry.STATE_CODE: "MA"})
+    update_data = {qry.NAME: "Boston City", qry.STATE_CODE: "MA"}
+    result_id = qry.update(city_id, update_data)
+    
+    # Verify update worked
+    assert result_id == city_id
+    assert qry.city_cache[city_id][qry.NAME] == "Boston City"

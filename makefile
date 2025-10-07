@@ -1,6 +1,7 @@
 include common.mk
 
 # Our directories
+CITIES_DIR = cities
 API_DIR = server
 DB_DIR = data
 SEC_DIR = security

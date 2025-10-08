@@ -63,3 +63,21 @@ def test_update_bad_fields_param_type():
     with pytest.raises(ValueError):
         city_id = qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
         qry.update(city_id, 123)
+        
+        
+def test_delete():
+    city_id = qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
+    qry.delete(city_id)
+    
+    assert city_id not in qry.city_cache
+    
+
+def test_delete_bad_id():
+    with pytest.raises(ValueError):
+        qry.delete(123)
+
+
+def test_delete_missing_id():
+    with pytest.raises(KeyError):
+        qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
+        qry.delete("NYC")

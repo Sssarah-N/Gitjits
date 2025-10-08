@@ -46,6 +46,15 @@ def update(city_id: str, flds: dict):
     return city_id
 
 
+def get(city_id: str) -> dict:
+    """Retrieve a city by ID."""
+    if not is_valid_id(city_id):
+        raise ValueError(f'Invalid ID: {city_id}')
+    if city_id not in city_cache:
+        raise KeyError(f'City not found: {city_id}')
+    return city_cache[city_id]
+
+
 def delete(city_id: str):
     """Delete a city by ID."""
     if not is_valid_id(city_id):

@@ -10,6 +10,12 @@ def reset_cache():
     yield
 
 
+def test_valid_id_min_length():
+    short_id = "."*(qry.MIN_ID_LEN - 1)
+    result = qry.is_valid_id(short_id)
+    assert not result
+    
+
 def test_good_create():
     old_count = qry.num_cities()
     new_rec_id = qry.create(qry.SAMPLE_CITY)
@@ -25,6 +31,12 @@ def test_create_bad_name():
 def test_create_bad_param_type():
     with pytest.raises(ValueError):
         qry.create(17)
+        
+
+def test_create_bad_keys():
+    with pytest.raises(ValueError):
+        invalid_key = qry.NAME + "2"
+        qry.create({ invalid_key: "CA" })
 
 
 def test_update():
@@ -35,3 +47,19 @@ def test_update():
     # Verify update worked
     assert result_id == city_id
     assert qry.city_cache[city_id][qry.NAME] == "Boston City"
+    
+    
+def test_update_bad_id():
+    with pytest.raises(ValueError):
+        qry.update(123, {qry.NAME: "New York"})
+
+
+def test_update_missing_id():
+    with pytest.raises(KeyError):
+        qry.update("NYC", {qry.NAME: "New York"})
+
+
+def test_update_bad_fields_param_type():
+    with pytest.raises(ValueError):
+        city_id = qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
+        qry.update(city_id, 123)

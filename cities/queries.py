@@ -33,6 +33,7 @@ def create(flds: dict):
     city_cache[new_id] = flds
     return new_id
 
+
 def update(city_id: str, flds: dict):
     """Update an existing city."""
     if not is_valid_id(city_id):
@@ -43,6 +44,7 @@ def update(city_id: str, flds: dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     city_cache[city_id].update(flds)
     return city_id
+
 
 def delete(city_id: str):
     """Delete a city by ID."""

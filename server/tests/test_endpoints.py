@@ -20,3 +20,8 @@ def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)
     resp_json = resp.get_json()
     assert ep.HELLO_RESP in resp_json
+
+def test_cities_get():
+    resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{ep.READ}")
+    resp_json = resp.get_json()
+    assert ep.CITIES_RESP in resp_json

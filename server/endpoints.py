@@ -28,6 +28,7 @@ HELLO_RESP = 'hello'
 CITIES_EPS = '/cities'
 CITIES_RESP = 'Cities'
 
+
 @api.route(f'{CITIES_EPS}/{READ}')
 class Cities(Resource):
     """
@@ -43,6 +44,7 @@ class Cities(Resource):
         except ConnectionError as err:
             return {ERROR: str(err)}
         return {CITIES_RESP: cities}
+
 
 @api.route(HELLO_EP)
 class HelloWorld(Resource):

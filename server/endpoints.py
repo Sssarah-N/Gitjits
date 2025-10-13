@@ -4,7 +4,7 @@ The endpoint called `endpoints` will return all available endpoints.
 """
 # from http import HTTPStatus
 
-from flask import Flask  # , request
+from flask import Flask, request  # , request
 from flask_restx import Resource, Api  # , fields  # Namespace
 from flask_cors import CORS
 
@@ -18,6 +18,7 @@ api = Api(app)
 MESSAGE = 'Message'
 ERROR = "Error"
 READ = 'read'
+POST = 'post'
 
 ENDPOINT_EP = '/endpoints'
 ENDPOINT_RESP = 'Available endpoints'
@@ -29,7 +30,7 @@ CITIES_EPS = '/cities'
 CITIES_RESP = 'Cities'
 
 
-@api.route(f'{CITIES_EPS}/{READ}')
+@api.route(f'{CITIES_EPS}')
 class Cities(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
@@ -44,6 +45,19 @@ class Cities(Resource):
         except ConnectionError as err:
             return {ERROR: str(err)}
         return {CITIES_RESP: cities}
+
+    def post(self):
+        """
+        Create a new city
+        """
+        try:
+            data = request.json
+            city_id = cqry.create(data)
+        except ConnectionError as err:
+            return {ERROR: str(err)}
+        except ValueError as err:
+            return {ERROR: str(err)}
+        return {CITIES_RESP: {"city_id": city_id}}
 
 
 @api.route(HELLO_EP)

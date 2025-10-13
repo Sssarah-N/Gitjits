@@ -1,16 +1,27 @@
+"""
+This file deals with our city-level data.
+"""
+from random import randint
 MIN_ID_LEN = 1
 
 ID = 'id'
 NAME = 'name'
 STATE_CODE = 'state_code'
 
-city_cache = {}
-
 SAMPLE_CITY = {
     NAME: 'New York',
     STATE_CODE: 'NY'
 }
 
+city_cache = {
+    1: SAMPLE_CITY,
+}
+
+def db_connect(success_ratio: int) -> bool:
+    """
+    Return True if connected, False if not.
+    """
+    return randint(1, success_ratio) % success_ratio
 
 def is_valid_id(_id: str) -> bool:
     if not isinstance(_id, str):
@@ -62,3 +73,11 @@ def delete(city_id: str):
     if city_id not in city_cache:
         raise KeyError(f'City not found: {city_id}')
     del city_cache[city_id]
+
+def read() -> dict:
+    if not db_connect(3):
+        raise ConnectionError('Could not connect to DB.')
+    return city_cache
+
+def main():
+    print(read())

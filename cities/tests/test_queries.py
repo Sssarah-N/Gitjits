@@ -99,3 +99,15 @@ def test_delete_missing_id():
     with pytest.raises(KeyError):
         qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
         qry.delete("NYC")
+
+@patch('cities.queries.db_connect', return_value=True, autospec=True)
+def test_read(mock_db_connect):
+    new_rec_id = qry.create(qry.SAMPLE_CITY)
+    cities = qry.read()
+    assert isinstance(cities, dict)
+    assert len(cities) > 1
+
+@patch('cities.queries.db_connect', return_value=False, autospec=True)
+def test_read(mock_db_connect):
+    with pytest.raises(ConnectionError):
+        cities = qry.read()

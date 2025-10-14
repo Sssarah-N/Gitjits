@@ -28,6 +28,9 @@ HELLO_RESP = 'hello'
 
 CITIES_EPS = '/cities'
 CITIES_RESP = 'Cities'
+CITY_ID = 'city_id'
+CITY_EP = '/cities/<city_id>'
+CITY_RESP = 'City'
 
 
 @api.route(f'{CITIES_EPS}')
@@ -58,6 +61,49 @@ class Cities(Resource):
         except ValueError as err:
             return {ERROR: str(err)}
         return {CITIES_RESP: {"city_id": city_id}}
+
+
+@api.route(CITY_EP)
+class City(Resource):
+    """
+    This class handles operations on individual cities.
+    """
+    def get(self, city_id):
+        """
+        Get a single city by ID.
+        """
+        try:
+            city = cqry.get(city_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {CITY_RESP: city}
+
+    def put(self, city_id):
+        """
+        Update a city by ID.
+        """
+        try:
+            data = request.json
+            updated_id = cqry.update(city_id, data)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {CITY_RESP: {CITY_ID: updated_id}}
+
+    def delete(self, city_id):
+        """
+        Delete a city by ID.
+        """
+        try:
+            cqry.delete(city_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {MESSAGE: f"City {city_id} deleted successfully"}
 
 
 @api.route(HELLO_EP)

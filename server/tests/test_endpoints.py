@@ -21,7 +21,9 @@ def test_hello():
     resp_json = resp.get_json()
     assert ep.HELLO_RESP in resp_json
 
-def test_cities_get():
+"""always returns True to avoid connection errors in tests"""
+@patch('cities.queries.db_connect', return_value=True, autospec=True)
+def test_cities_get(mock_db_connect):
     resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}")
     resp_json = resp.get_json()
     assert ep.CITIES_RESP in resp_json

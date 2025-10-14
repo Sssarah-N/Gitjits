@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 from cities import queries as qry
 
@@ -105,9 +106,10 @@ def test_read(mock_db_connect):
     new_rec_id = qry.create(qry.SAMPLE_CITY)
     cities = qry.read()
     assert isinstance(cities, dict)
-    assert len(cities) > 1
+    assert len(cities) >= 1
+    assert new_rec_id in cities
 
 @patch('cities.queries.db_connect', return_value=False, autospec=True)
-def test_read(mock_db_connect):
+def test_read_connection_error(mock_db_connect):
     with pytest.raises(ConnectionError):
         cities = qry.read()

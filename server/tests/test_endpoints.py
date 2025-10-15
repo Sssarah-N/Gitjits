@@ -54,3 +54,24 @@ def test_cities_post_invalid_data_type():
       resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json="not a dict")
       resp_json = resp.get_json()
       assert ep.ERROR in resp_json
+
+def test_city_get_valid():
+      """Test getting a single city by ID."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Seattle", "state_code": "WA"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+
+      # Now get it
+      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert ep.CITY_RESP in resp_json
+      assert resp_json[ep.CITY_RESP]["name"] == "Seattle"
+
+def test_city_get_not_found():
+      """Test getting city that doesn't exist."""
+      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/nonexistent_id_999")
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+      assert resp.status_code == NOT_FOUND

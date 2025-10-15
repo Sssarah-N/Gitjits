@@ -14,7 +14,7 @@ SAMPLE_CITY = {
 }
 
 city_cache = {
-    1: SAMPLE_CITY,
+    '1': SAMPLE_CITY,
 }
 
 def db_connect(success_ratio: int) -> bool:
@@ -24,6 +24,14 @@ def db_connect(success_ratio: int) -> bool:
     return randint(1, success_ratio) % success_ratio
 
 def is_valid_id(_id: str) -> bool:
+    """
+    Since flask treat http request as text, 
+    everything is passed in as a string by default,
+    therefore nothing would be an invalid id for now.
+    Empty string returns false,
+    but that redirects the page so it won't get tested.
+    #needs attention or resolve.
+    """
     if not isinstance(_id, str):
         return False
     if len(_id) < MIN_ID_LEN:

@@ -33,3 +33,24 @@ def test_cities_post():
     resp_json = resp.get_json()
     assert ep.CITIES_RESP in resp_json
     assert "city_id" in resp_json[ep.CITIES_RESP]
+
+def test_cities_post_with_state_code():
+      """Test creating a city with state code."""
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Boston", "state_code": "MA"})
+      resp_json = resp.get_json()
+      assert ep.CITIES_RESP in resp_json
+      assert "city_id" in resp_json[ep.CITIES_RESP]
+
+def test_cities_post_missing_name():
+      """Test creating city without required name field."""
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"state_code": "CA"})
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+
+def test_cities_post_invalid_data_type():
+      """Test creating city with non-dict data."""
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json="not a dict")
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json

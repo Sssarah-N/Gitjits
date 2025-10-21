@@ -5,7 +5,7 @@ The endpoint called `endpoints` will return all available endpoints.
 # from http import HTTPStatus
 
 from flask import Flask, request  # , request
-from flask_restx import Resource, Api  # , fields  # Namespace
+from flask_restx import Resource, Api, fields  # Namespace
 from flask_cors import CORS
 
 # import werkzeug.exceptions as wz
@@ -14,6 +14,14 @@ import cities.queries as cqry
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+
+# Define the city model for Swagger documentation
+city_model = api.model('City', {
+    'name': fields.String(required=True, description='City name',
+                          example='New York'),
+    'state_code': fields.String(required=True, description='State code',
+                                example='NY')
+})
 
 MESSAGE = 'Message'
 ERROR = "Error"
@@ -49,12 +57,15 @@ class Cities(Resource):
             return {ERROR: str(err)}
         return {CITIES_RESP: cities}
 
+    @api.expect(city_model)
     def post(self):
         """
         Create a new city
         """
         try:
             data = request.json
+            if data is None:
+                return {ERROR: "Request body must contain JSON data"}, 400
             city_id = cqry.create(data)
         except ConnectionError as err:
             return {ERROR: str(err)}
@@ -80,6 +91,7 @@ class City(Resource):
             return {ERROR: str(err)}, 404
         return {CITY_RESP: city}
 
+    @api.expect(city_model)
     def put(self, city_id):
         """
         Update a city by ID.

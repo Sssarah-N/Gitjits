@@ -75,3 +75,10 @@ def test_city_get_not_found():
       resp_json = resp.get_json()
       assert ep.ERROR in resp_json
       assert resp.status_code == NOT_FOUND
+
+def test_city_delete_not_found():
+      """Test deleting city that doesn't exist."""
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/nonexistent_id_999")
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+      assert resp.status_code == NOT_FOUND

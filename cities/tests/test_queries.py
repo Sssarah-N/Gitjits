@@ -18,7 +18,7 @@ def test_valid_id_min_length():
     short_id = "."*(qry.MIN_ID_LEN - 1)
     result = qry.is_valid_id(short_id)
     assert not result
-    
+
 
 def test_good_create():
     old_count = qry.num_cities()
@@ -41,6 +41,11 @@ def test_create_bad_keys():
     with pytest.raises(ValueError):
         invalid_key = qry.NAME + "2"
         qry.create({ invalid_key: "CA" })
+
+@pytest.mark.skip(reason='Currently adds duplicate cities as new entries')
+def test_create_duplicate():
+    with pytest.raises(ValueError, match="City already exists"):
+        qry.create(qry.SAMPLE_CITY)
 
 
 def test_update():

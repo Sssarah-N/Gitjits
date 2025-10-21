@@ -3,13 +3,16 @@ from unittest.mock import patch
 
 from cities import queries as qry
 
-
 @pytest.fixture(autouse=True)
 def reset_cache():
     """Reset city cache before each test to ensure test isolation."""
     qry.city_cache.clear()
     yield
 
+@pytest.fixture(scope='function')
+def temp_city():
+    new_rec_id = qry.create(qry.SAMPLE_CITY)
+    yield new_rec_id
 
 def test_valid_id_min_length():
     short_id = "."*(qry.MIN_ID_LEN - 1)
@@ -102,12 +105,15 @@ def test_delete_missing_id():
         qry.delete("NYC")
 
 @patch('cities.queries.db_connect', return_value=True, autospec=True)
-def test_read(mock_db_connect):
-    new_rec_id = qry.create(qry.SAMPLE_CITY)
+def test_read(mock_db_connect, temp_city):
     cities = qry.read()
     assert isinstance(cities, dict)
-    assert len(cities) >= 1
-    assert new_rec_id in cities
+    assert temp_city in cities
+
+@patch('cities.queries.db_connect', return_value=True, autospec=True)
+def test_delete(mock_db_connect, temp_city):
+    qry.delete(temp_city)
+    assert temp_city not in qry.read()
 
 @patch('cities.queries.db_connect', return_value=False, autospec=True)
 def test_read_connection_error(mock_db_connect):

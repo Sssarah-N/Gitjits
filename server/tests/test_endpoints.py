@@ -76,6 +76,33 @@ def test_city_get_not_found():
       assert ep.ERROR in resp_json
       assert resp.status_code == NOT_FOUND
 
+def test_city_put_valid():
+      """Test updating a city by ID."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Austin", "state_code": "TX"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+
+      # Now update it
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}",
+                            json={"name": "Austin", "state_code": "TEX"})
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert ep.CITY_RESP in resp_json
+      assert ep.CITY_ID in resp_json[ep.CITY_RESP]
+      
+      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+      resp_json = resp.get_json()
+      assert resp_json[ep.CITY_RESP]["state_code"] == "TEX"
+
+def test_city_put_not_found():
+      """Test updating city that doesn't exist."""
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/nonexistent_id_999",
+                            json={"name": "Nowhere", "state_code": "XX"})
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+      assert resp.status_code == NOT_FOUND
+
 def test_city_delete_not_found():
       """Test deleting city that doesn't exist."""
       resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/nonexistent_id_999")

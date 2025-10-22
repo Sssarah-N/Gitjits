@@ -93,3 +93,119 @@ def test_endpoints_not_empty():
       endpoints_list = resp_json[ep.ENDPOINT_RESP]
       
       assert len(endpoints_list) > 0
+
+
+# PUT (Update) Tests
+def test_city_put_valid():
+      """Test updating a city with valid data."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Portland", "state_code": "OR"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Update the city
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}",
+                            json={"name": "Portland", "state_code": "ME"})
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert ep.CITY_RESP in resp_json
+      assert resp_json[ep.CITY_RESP][ep.CITY_ID] == city_id
+      
+      # Verify the update
+      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+      resp_json = resp.get_json()
+      assert resp_json[ep.CITY_RESP]["state_code"] == "ME"
+
+def test_city_put_not_found():
+      """Test updating a city that doesn't exist."""
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/nonexistent_id_999",
+                            json={"name": "Ghost City"})
+      assert resp.status_code == NOT_FOUND
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+
+
+def test_city_put_invalid_data_type():
+      """Test updating a city with non-dict data."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Denver", "state_code": "CO"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Try to update with invalid data
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json="not a dict")
+      assert resp.status_code == BAD_REQUEST
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+
+
+def test_city_put_empty_body():
+      """Test updating a city with empty dict."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Phoenix", "state_code": "AZ"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Update with empty dict (should still work, just no changes)
+      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json={})
+      assert resp.status_code == OK
+
+
+# DELETE Tests
+def test_city_delete_valid():
+      """Test deleting a city with valid ID."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Miami", "state_code": "FL"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Delete the city
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert ep.MESSAGE in resp_json
+      assert city_id in resp_json[ep.MESSAGE]
+
+
+def test_city_delete_and_verify_removed():
+      """Test that deleted city is actually removed."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Tampa", "state_code": "FL"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Delete the city
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == OK
+      
+      # Verify it's gone
+      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == NOT_FOUND
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+
+
+def test_city_delete_not_found():
+      """Test deleting a city that doesn't exist."""
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/nonexistent_id_999")
+      assert resp.status_code == NOT_FOUND
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json
+
+
+def test_city_delete_twice():
+      """Test deleting the same city twice (should fail second time)."""
+      # First create a city
+      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                             json={"name": "Orlando", "state_code": "FL"})
+      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+      
+      # Delete once
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == OK
+      
+      # Try to delete again
+      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == NOT_FOUND
+      resp_json = resp.get_json()
+      assert ep.ERROR in resp_json

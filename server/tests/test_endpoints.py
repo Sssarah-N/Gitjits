@@ -12,9 +12,43 @@ from unittest.mock import patch
 import pytest
 
 import server.endpoints as ep
+import cities.queries as cqry
 
 TEST_CLIENT = ep.app.test_client()
 
+# fixtures
+
+@pytest.fixture
+def test_client():
+    """Fixture to provide a test client."""
+    return ep.app.test_client()
+
+
+@pytest.fixture
+def sample_city_data():
+    """Fixture to provide sample city data."""
+    return {"name": "Test City", "state_code": "TC"}
+
+
+@pytest.fixture
+def create_test_city(test_client):
+    """Fixture to create a test city and return its ID."""
+    def _create_city(name="Fixture City", state_code="FC"):
+        resp = test_client.post(
+            f"{ep.CITIES_EPS}",
+            json={"name": name, "state_code": state_code}
+        )
+        return resp.get_json()[ep.CITIES_RESP]["city_id"]
+    return _create_city
+
+
+@pytest.fixture
+def mock_city_cache():
+    """Fixture to provide a mock city cache."""
+    return {
+        '1': {'name': 'New York', 'state_code': 'NY'},
+        '2': {'name': 'Los Angeles', 'state_code': 'CA'},
+    }
 
 def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)

@@ -275,3 +275,9 @@ def test_city_update_with_fixture(test_client, create_test_city):
           json={"name": "San Francisco", "state_code": "CAL"}
       )
       assert resp.status_code == OK
+
+def test_update_nonexistent_city():
+    """Test if updating a non-existent city raises KeyError."""
+    city_id = "New Orleans"
+    with pytest.raises(KeyError):
+        cqry.update(city_id, {cqry.NAME: "Ghosttown"})

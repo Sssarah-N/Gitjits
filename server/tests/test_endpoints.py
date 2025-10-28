@@ -243,3 +243,35 @@ def test_city_delete_twice():
       assert resp.status_code == NOT_FOUND
       resp_json = resp.get_json()
       assert ep.ERROR in resp_json
+
+
+# ============= TESTS USING FIXTURES =============
+
+def test_city_post_with_fixture(test_client, sample_city_data):
+      """Test creating a city using fixtures."""
+      resp = test_client.post(f"{ep.CITIES_EPS}", json=sample_city_data)
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert ep.CITIES_RESP in resp_json
+      assert "city_id" in resp_json[ep.CITIES_RESP]
+
+
+def test_city_get_with_fixture(test_client, create_test_city):
+      """Test getting a city using create_test_city fixture."""
+      city_id = create_test_city(name="Chicago", state_code="IL")
+      
+      resp = test_client.get(f"{ep.CITIES_EPS}/{city_id}")
+      assert resp.status_code == OK
+      resp_json = resp.get_json()
+      assert resp_json[ep.CITY_RESP]["name"] == "Chicago"
+
+
+def test_city_update_with_fixture(test_client, create_test_city):
+      """Test updating a city using fixtures."""
+      city_id = create_test_city(name="San Francisco", state_code="CA")
+      
+      resp = test_client.put(
+          f"{ep.CITIES_EPS}/{city_id}",
+          json={"name": "San Francisco", "state_code": "CAL"}
+      )
+      assert resp.status_code == OK

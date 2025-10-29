@@ -125,6 +125,11 @@ def test_delete(mock_db_connect, temp_city):
     qry.delete(temp_city)
     assert temp_city not in qry.read()
 
+@patch('cities.queries.db_connect', return_value=True, autospec=True)
+def test_delete_missing(mock_db_connect):
+    with pytest.raises(KeyError):
+        qry.delete("nonexistent entry")
+
 @patch('cities.queries.db_connect', return_value=False, autospec=True)
 def test_read_connection_error(mock_db_connect):
     with pytest.raises(ConnectionError):

@@ -27,13 +27,13 @@ def test_client():
 @pytest.fixture
 def sample_city_data():
     """Fixture to provide sample city data."""
-    return {"name": "Test City", "state_code": "TC"}
+    return {"name": "Test City", "state_code": "TX"}
 
 
 @pytest.fixture
 def create_test_city(test_client):
     """Fixture to create a test city and return its ID."""
-    def _create_city(name="Fixture City", state_code="FC"):
+    def _create_city(name="Fixture City", state_code="FL"):
         resp = test_client.post(
             f"{ep.CITIES_EPS}",
             json={"name": name, "state_code": state_code}
@@ -272,7 +272,7 @@ def test_city_update_with_fixture(test_client, create_test_city):
       
       resp = test_client.put(
           f"{ep.CITIES_EPS}/{city_id}",
-          json={"name": "San Francisco", "state_code": "CAL"}
+          json={"name": "San Francisco", "state_code": "OR"}
       )
       assert resp.status_code == OK
 

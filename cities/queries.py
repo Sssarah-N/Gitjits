@@ -9,15 +9,8 @@ ID = 'id'
 NAME = 'name'
 STATE_CODE = 'state_code'
 
-# Valid US state codes (50 states + DC + 5 territories)
-VALID_STATE_CODES = {
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
-    'DC', 'PR', 'VI', 'GU', 'AS', 'MP'
-}
+# Maximum length for state/province/region codes
+MAX_STATE_CODE_LENGTH = 10
 
 SAMPLE_CITY = {
     NAME: 'New York',
@@ -52,23 +45,45 @@ def is_valid_id(_id: str) -> bool:
 
 def is_valid_state_code(state_code: str) -> bool:
     """
-    Validate if the state code is a valid US state/territory code.
+    Validate state/province/region code format (international-friendly).
+    
+    Accepts any alphanumeric code with reasonable length.
+    Works for US states, Canadian provinces, Australian states, etc.
     
     Args:
-        state_code: Two-letter state code (e.g., 'NY', 'CA')
+        state_code: State/province/region code (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
         
     Returns:
-        True if valid, False otherwise
+        True if format is valid, False otherwise
         
-    Example:
-        >>> is_valid_state_code('NY')
+    Examples:
+        >>> is_valid_state_code('NY')      # US - New York
         True
-        >>> is_valid_state_code('XX')
+        >>> is_valid_state_code('ON')      # Canada - Ontario
+        True
+        >>> is_valid_state_code('NSW')     # Australia - New South Wales
+        True
+        >>> is_valid_state_code('Tokyo')   # Japan
+        True
+        >>> is_valid_state_code('X' * 20) # Too long
         False
     """
     if not isinstance(state_code, str):
         return False
-    return state_code.upper() in VALID_STATE_CODES
+    
+    # Remove whitespace for validation
+    code = state_code.strip()
+    
+    # Check length (2-10 characters is reasonable for most regions)
+    if len(code) < 1 or len(code) > MAX_STATE_CODE_LENGTH:
+        return False
+    
+    # Allow alphanumeric, spaces, hyphens (for regions like "New South Wales")
+    # But require at least one letter
+    if not any(c.isalpha() for c in code):
+        return False
+    
+    return True
 
 
 def num_cities() -> int:
@@ -77,26 +92,33 @@ def num_cities() -> int:
 
 def create(flds: dict):
     """
-    Create a new city with validation.
+    Create a new city with validation (international support).
     
     Args:
         flds: Dictionary with 'name' (required) and 'state_code' (optional)
+              state_code can be any region identifier (US state, Canadian province, etc.)
         
     Returns:
         New city ID as string
         
     Raises:
-        ValueError: If validation fails (bad type, missing name, or invalid state code)
+        ValueError: If validation fails (bad type, missing name, or invalid state_code format)
+        
+    Examples:
+        >>> create({'name': 'New York', 'state_code': 'NY'})      # US
+        >>> create({'name': 'Toronto', 'state_code': 'ON'})       # Canada
+        >>> create({'name': 'Sydney', 'state_code': 'NSW'})       # Australia
+        >>> create({'name': 'Tokyo', 'state_code': 'Tokyo'})      # Japan
     """
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
     
-    # Validate state code if provided
+    # Validate state code format if provided (length, characters, etc.)
     if STATE_CODE in flds and flds[STATE_CODE]:
         if not is_valid_state_code(flds[STATE_CODE]):
-            raise ValueError(f'Invalid state code: {flds[STATE_CODE]}')
+            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
     
     new_id = str(len(city_cache) + 1)
     city_cache[new_id] = flds
@@ -105,17 +127,18 @@ def create(flds: dict):
 
 def update(city_id: str, flds: dict):
     """
-    Update an existing city with validation.
+    Update an existing city with validation (international support).
     
     Args:
         city_id: ID of the city to update
         flds: Dictionary with fields to update (name, state_code)
+              state_code can be any region identifier
         
     Returns:
         The city ID
         
     Raises:
-        ValueError: If validation fails (bad ID, bad type, or invalid state code)
+        ValueError: If validation fails (bad ID, bad type, or invalid state_code format)
         KeyError: If city not found
     """
     if not is_valid_id(city_id):
@@ -125,10 +148,10 @@ def update(city_id: str, flds: dict):
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     
-    # Validate state code if being updated
+    # Validate state code format if being updated
     if STATE_CODE in flds and flds[STATE_CODE]:
         if not is_valid_state_code(flds[STATE_CODE]):
-            raise ValueError(f'Invalid state code: {flds[STATE_CODE]}')
+            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
     
     city_cache[city_id].update(flds)
     return city_id

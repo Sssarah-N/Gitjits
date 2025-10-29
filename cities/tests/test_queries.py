@@ -142,3 +142,26 @@ def test_delete_missing(mock_db_connect):
 def test_read_connection_error(mock_db_connect):
     with pytest.raises(ConnectionError):
         cities = qry.read()
+
+
+# ============= STATE CODE VALIDATION TESTS =============
+
+def test_valid_state_codes_accepted():
+    """Test that various valid state/region codes are accepted."""
+    # Test various formats that should all be valid
+    assert qry.is_valid_state_code('NY') is True      # US state
+    assert qry.is_valid_state_code('ON') is True      # Canadian province  
+    assert qry.is_valid_state_code('NSW') is True     # Australian state
+    assert qry.is_valid_state_code('Tokyo') is True   # Full name
+
+
+def test_invalid_state_codes_rejected():
+    """Test that clearly invalid codes are rejected."""
+    # Too long
+    assert qry.is_valid_state_code('X' * 20) is False
+    # Only numbers (no letters)
+    assert qry.is_valid_state_code('123') is False
+    # Empty
+    assert qry.is_valid_state_code('') is False
+    # Wrong type
+    assert qry.is_valid_state_code(None) is False

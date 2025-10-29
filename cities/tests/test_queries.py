@@ -27,9 +27,14 @@ def test_good_create():
     assert qry.num_cities() > old_count
 
 
-def test_create_bad_name():
+def test_create_no_name():
     with pytest.raises(ValueError):
         qry.create({})
+        
+        
+def test_create_empty_name():
+    with pytest.raises(ValueError):
+        qry.create({qry.NAME: ""})
 
 
 def test_create_bad_param_type():

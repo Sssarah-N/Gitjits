@@ -46,6 +46,14 @@ def test_create_bad_keys():
     with pytest.raises(ValueError):
         invalid_key = qry.NAME + "2"
         qry.create({ invalid_key: "CA" })
+        
+        
+def test_create_preserves_extra_fields():
+    city = {qry.NAME: "ExtraCity", qry.STATE_CODE: "EC", "population": 12345}
+    city_id = qry.create(city)
+    stored = qry.get(city_id)
+    assert stored["population"] == 12345
+
 
 @pytest.mark.skip(reason='Currently adds duplicate cities as new entries')
 def test_create_duplicate():

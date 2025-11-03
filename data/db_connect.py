@@ -92,6 +92,8 @@ def read(collection, db=SE_DB, no_id=True) -> list:
         ret.append(doc)
     return ret
 
+def update(collection, filters, update_dict, db=SE_DB):
+    return client[db][collection].update_one(filters, {'$set': update_dict})
 
 def read_dict(collection, key, db=SE_DB, no_id=True) -> dict:
     recs = read(collection, db=db, no_id=no_id)

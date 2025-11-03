@@ -1,7 +1,7 @@
 """
 This file deals with our city-level data.
 """
-from random import randint
+import data.db_connect as dbc
 
 MIN_ID_LEN = 1
 
@@ -87,7 +87,7 @@ def is_valid_state_code(state_code: str) -> bool:
 
 
 def num_cities() -> int:
-    return len(city_cache)
+    return len(read())
 
 
 def create(flds: dict):
@@ -110,18 +110,13 @@ def create(flds: dict):
         >>> create({'name': 'Sydney', 'state_code': 'NSW'})       # Australia
         >>> create({'name': 'Tokyo', 'state_code': 'Tokyo'})      # Japan
     """
+    print(f'{flds=}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
-    
-    # Validate state code format if provided (length, characters, etc.)
-    if STATE_CODE in flds and flds[STATE_CODE]:
-        if not is_valid_state_code(flds[STATE_CODE]):
-            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
-    
-    new_id = str(len(city_cache) + 1)
-    city_cache[new_id] = flds
+    new_id = dbc.create(CITY_COLLECTION, flds)
+    print(f'{new_id=}')
     return new_id
 
 
@@ -153,7 +148,7 @@ def update(city_id: str, flds: dict):
         if not is_valid_state_code(flds[STATE_CODE]):
             raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
     
-    city_cache[city_id].update(flds)
+    updated = dbc.update(CITY_COLLECTION, {ID: city_id}, flds)
     return city_id
 
 
@@ -163,7 +158,8 @@ def get(city_id: str) -> dict:
         raise ValueError(f'Invalid ID: {city_id}')
     if city_id not in city_cache:
         raise KeyError(f'City not found: {city_id}')
-    return city_cache[city_id]
+    city = dbc.read_one(CITY_COLLECTION, {ID: city_id})
+    return city
 
 
 def delete(city_id: str):
@@ -172,12 +168,13 @@ def delete(city_id: str):
         raise ValueError(f'Invalid ID: {city_id}')
     if city_id not in city_cache:
         raise KeyError(f'City not found: {city_id}')
-    del city_cache[city_id]
+    ret = dbc.delete(CITY_COLLECTION, {ID: city_id})
+    if ret < 1:
+        raise ValueError(f'City not found: {city_id}')
+    return True
 
 def read() -> dict:
-    if not db_connect(3):
-        raise ConnectionError('Could not connect to DB.')
-    return city_cache
+    return dbc.read(CITY_COLLECTION)
 
 def main():
     print(read())

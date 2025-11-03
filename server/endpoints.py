@@ -98,12 +98,14 @@ class City(Resource):
         """
         try:
             data = request.json
-            updated_id = cqry.update(city_id, data)
+            cqry.update(city_id, data)
+            updated_city = cqry.get(city_id)
+            updated_city['city_id'] = updated_city.get('id', city_id)
         except ValueError as err:
             return {ERROR: str(err)}, 400
         except KeyError as err:
             return {ERROR: str(err)}, 404
-        return {CITY_RESP: {CITY_ID: updated_id}}
+        return {CITY_RESP: updated_city}, 200
 
     def delete(self, city_id):
         """

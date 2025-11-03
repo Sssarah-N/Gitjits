@@ -1,9 +1,12 @@
 """
 This file deals with our city-level data.
 """
+from bson import ObjectId
 import data.db_connect as dbc
 
 MIN_ID_LEN = 1
+
+CITY_COLLECTION = 'cities'
 
 ID = 'id'
 NAME = 'name'
@@ -110,6 +113,7 @@ def create(flds: dict):
         >>> create({'name': 'Sydney', 'state_code': 'NSW'})       # Australia
         >>> create({'name': 'Tokyo', 'state_code': 'Tokyo'})      # Japan
     """
+    dbc.connect_db()
     print(f'{flds=}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
@@ -117,6 +121,7 @@ def create(flds: dict):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
     new_id = dbc.create(CITY_COLLECTION, flds)
     print(f'{new_id=}')
+    dbc.update(CITY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
     return new_id
 
 
@@ -138,17 +143,13 @@ def update(city_id: str, flds: dict):
     """
     if not is_valid_id(city_id):
         raise ValueError(f'Invalid ID: {city_id}')
-    if city_id not in city_cache:
-        raise KeyError(f'City not found: {city_id}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
-    
-    # Validate state code format if being updated
-    if STATE_CODE in flds and flds[STATE_CODE]:
-        if not is_valid_state_code(flds[STATE_CODE]):
-            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
-    
+
     updated = dbc.update(CITY_COLLECTION, {ID: city_id}, flds)
+
+    if not updated or getattr(updated, 'matched_count', 0) < 1:
+        raise KeyError(f'City not found: {city_id}')
     return city_id
 
 
@@ -156,9 +157,9 @@ def get(city_id: str) -> dict:
     """Retrieve a city by ID."""
     if not is_valid_id(city_id):
         raise ValueError(f'Invalid ID: {city_id}')
-    if city_id not in city_cache:
-        raise KeyError(f'City not found: {city_id}')
     city = dbc.read_one(CITY_COLLECTION, {ID: city_id})
+    if not city:
+        raise KeyError(f'City not found: {city_id}')
     return city
 
 
@@ -166,12 +167,10 @@ def delete(city_id: str):
     """Delete a city by ID."""
     if not is_valid_id(city_id):
         raise ValueError(f'Invalid ID: {city_id}')
-    if city_id not in city_cache:
-        raise KeyError(f'City not found: {city_id}')
     ret = dbc.delete(CITY_COLLECTION, {ID: city_id})
     if ret < 1:
-        raise ValueError(f'City not found: {city_id}')
-    return True
+        raise KeyError(f'City not found: {city_id}')
+    return ret
 
 def read() -> dict:
     return dbc.read(CITY_COLLECTION)

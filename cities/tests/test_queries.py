@@ -1,7 +1,19 @@
+from copy import deepcopy
+
 import pytest
 from unittest.mock import patch
 
 from cities import queries as qry
+
+def get_temp_rec():
+    return deepcopy(qry.SAMPLE_CITY)
+
+
+@pytest.fixture(scope='function')
+def temp_city_no_del():
+    temp_rec = get_temp_rec()
+    qry.create(temp_rec)
+    return temp_rec
 
 @pytest.fixture(autouse=True)
 def reset_cache():
@@ -11,8 +23,14 @@ def reset_cache():
 
 @pytest.fixture(scope='function')
 def temp_city():
-    new_rec_id = qry.create(qry.SAMPLE_CITY)
+    temp_rec = get_temp_rec()
+    new_rec_id = qry.create(temp_rec)
     yield new_rec_id
+    try:
+        qry.delete(temp_rec[qry.NAME], temp_rec[qry.STATE_CODE])
+    except ValueError:
+        print('The record was already deleted.')
+
 
 def test_valid_id_min_length():
     short_id = "."*(qry.MIN_ID_LEN - 1)
@@ -22,7 +40,8 @@ def test_valid_id_min_length():
 
 def test_good_create():
     old_count = qry.num_cities()
-    new_rec_id = qry.create(qry.SAMPLE_CITY)
+    temp_rec = get_temp_rec()
+    new_rec_id = qry.create(temp_rec)
     assert qry.is_valid_id(new_rec_id)
     assert qry.num_cities() > old_count
 
@@ -49,7 +68,8 @@ def test_create_bad_keys():
         
         
 def test_create_preserves_extra_fields():
-    city = {qry.NAME: "ExtraCity", qry.STATE_CODE: "EC", "population": 12345}
+    city = get_temp_rec()
+    city.update({"population": 12345})
     city_id = qry.create(city)
     stored = qry.get(city_id)
     assert stored["population"] == 12345
@@ -62,13 +82,14 @@ def test_create_duplicate():
 
 
 def test_update():
-    city_id = qry.create({qry.NAME: "Boston", qry.STATE_CODE: "MA"})
-    update_data = {qry.NAME: "Boston City", qry.STATE_CODE: "MA"}
+    temp_rec = get_temp_rec()  
+    city_id = qry.create(temp_rec)
+    update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.STATE_CODE: temp_rec[qry.STATE_CODE]}
     result_id = qry.update(city_id, update_data)
     
     # Verify update worked
     assert result_id == city_id
-    assert qry.city_cache[city_id][qry.NAME] == "Boston City"
+    assert qry.city_cache[city_id][qry.NAME] == temp_rec[qry.NAME] + " Updated"
     
     
 def test_update_bad_id():
@@ -82,17 +103,17 @@ def test_update_missing_id():
 
 
 def test_update_bad_fields_param_type():
+    city_id = qry.create(get_temp_rec())
     with pytest.raises(ValueError):
-        city_id = qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
         qry.update(city_id, 123)
         
         
 def test_get():
-    city_id = qry.create({qry.NAME: "Los Angeles", qry.STATE_CODE: "CA"})
+    temp_rec = get_temp_rec()
+    city_id = qry.create(temp_rec)
     city = qry.get(city_id)
-
-    assert city[qry.NAME] == "Los Angeles"
-    assert city[qry.STATE_CODE] == "CA"
+    assert city[qry.NAME] == temp_rec[qry.NAME]
+    assert city[qry.STATE_CODE] == temp_rec[qry.STATE_CODE]
 
 
 def test_get_bad_id():
@@ -106,9 +127,9 @@ def test_get_missing_id():
 
 
 def test_delete():
-    city_id = qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
-    qry.delete(city_id)
-
+    temp_rec = get_temp_rec()
+    city_id = qry.create(temp_rec)
+    qry.delete(temp_rec[qry.NAME], temp_rec[qry.STATE_CODE])
     assert city_id not in qry.city_cache
     
 
@@ -122,23 +143,23 @@ def test_delete_missing_id():
         qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
         qry.delete("NYC")
 
-@patch('cities.queries.db_connect', return_value=True, autospec=True)
+@patch('data.db_connect.read', return_value=True, autospec=True)
 def test_read(mock_db_connect, temp_city):
     cities = qry.read()
     assert isinstance(cities, dict)
     assert temp_city in cities
 
-@patch('cities.queries.db_connect', return_value=True, autospec=True)
+@patch('data.db_connect.read', return_value=True, autospec=True)
 def test_delete(mock_db_connect, temp_city):
     qry.delete(temp_city)
     assert temp_city not in qry.read()
 
-@patch('cities.queries.db_connect', return_value=True, autospec=True)
+@patch('data.db_connect.read', return_value=True, autospec=True)
 def test_delete_missing(mock_db_connect):
     with pytest.raises(KeyError):
         qry.delete("nonexistent entry")
 
-@patch('cities.queries.db_connect', return_value=False, autospec=True)
+@patch('data.db_connect.read', return_value=False, autospec=True)
 def test_read_connection_error(mock_db_connect):
     with pytest.raises(ConnectionError):
         cities = qry.read()

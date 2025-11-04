@@ -27,8 +27,8 @@ def temp_city():
     new_rec_id = qry.create(temp_rec)
     yield new_rec_id
     try:
-        qry.delete(temp_rec[qry.NAME], temp_rec[qry.STATE_CODE])
-    except ValueError:
+        qry.delete(new_rec_id)
+    except (ValueError, KeyError):
         print('The record was already deleted.')
 
 
@@ -89,7 +89,8 @@ def test_update():
     
     # Verify update worked
     assert result_id == city_id
-    assert qry.city_cache[city_id][qry.NAME] == temp_rec[qry.NAME] + " Updated"
+    updated_city = qry.get(city_id)
+    assert updated_city[qry.NAME] == temp_rec[qry.NAME] + " Updated"
     
     
 def test_update_bad_id():
@@ -129,8 +130,10 @@ def test_get_missing_id():
 def test_delete():
     temp_rec = get_temp_rec()
     city_id = qry.create(temp_rec)
-    qry.delete(temp_rec[qry.NAME], temp_rec[qry.STATE_CODE])
-    assert city_id not in qry.city_cache
+    qry.delete(city_id)
+    # Verify city is deleted by trying to get it
+    with pytest.raises(KeyError):
+        qry.get(city_id)
     
 
 def test_delete_bad_id():
@@ -143,24 +146,26 @@ def test_delete_missing_id():
         qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
         qry.delete("NYC")
 
-@patch('data.db_connect.read', return_value=True, autospec=True)
-def test_read(mock_db_connect, temp_city):
+def test_read(temp_city):
     cities = qry.read()
-    assert isinstance(cities, dict)
-    assert temp_city in cities
+    assert isinstance(cities, list)
+    # Check if our temp_city is in the list
+    city_ids = [city.get('id') for city in cities]
+    assert temp_city in city_ids
 
-@patch('data.db_connect.read', return_value=True, autospec=True)
-def test_delete(mock_db_connect, temp_city):
+def test_delete_removes_from_list(temp_city):
     qry.delete(temp_city)
-    assert temp_city not in qry.read()
+    cities = qry.read()
+    city_ids = [city.get('id') for city in cities]
+    assert temp_city not in city_ids
 
-@patch('data.db_connect.read', return_value=True, autospec=True)
-def test_delete_missing(mock_db_connect):
+def test_delete_missing():
     with pytest.raises(KeyError):
         qry.delete("nonexistent entry")
 
-@patch('data.db_connect.read', return_value=False, autospec=True)
-def test_read_connection_error(mock_db_connect):
+@patch('data.db_connect.client', None)
+@patch('data.db_connect.connect_db', side_effect=ConnectionError("Cannot connect to database"))
+def test_read_connection_error(mock_connect):
     with pytest.raises(ConnectionError):
         cities = qry.read()
 

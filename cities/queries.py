@@ -172,7 +172,7 @@ def delete(city_id: str):
         raise KeyError(f'City not found: {city_id}')
     return ret
 
-def read() -> dict:
+def read() -> list:
     return dbc.read(CITY_COLLECTION)
 
 def main():

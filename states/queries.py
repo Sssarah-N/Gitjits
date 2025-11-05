@@ -44,6 +44,14 @@ def read() -> list:
     return dbc.read(STATE_COLLECTION)
 
 
+def create(flds: dict):
+    if not isinstance(flds, dict):
+        raise ValueError(f'Bad type for {type(flds)=}')
+    new_id = dbc.create(STATE_COLLECTION, flds)
+    dbc.update(STATE_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
+    return new_id
+
+    
 def main():
     print(read())
 

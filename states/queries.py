@@ -37,11 +37,59 @@ def is_valid_id(_id: str) -> bool:
 
 
 def num_states() -> int:
-    return len(read())
+    return len(state_cache)
 
 
-def read() -> list:
-    return dbc.read(STATE_COLLECTION)
+def create(flds: dict):
+    """
+    Create a new state.
+    
+    Raises:
+        ValueError: If validation fails (bad type, missing name, invalid fields)
+    """
+    if not isinstance(flds, dict):
+        raise ValueError(f'Bad type for {type(flds)=}')
+    if not flds.get(NAME):
+        raise ValueError(f'Bad value for {flds.get(NAME)=}')
+    
+    new_id = str(len(state_cache) + 1)
+    state_cache[new_id] = flds
+    return new_id
+
+
+def update(state_id: str, flds: dict):
+    """Update an existing state."""
+    if not is_valid_id(state_id):
+        raise ValueError(f'Invalid ID: {state_id}')
+    if state_id not in state_cache:
+        raise KeyError(f'State not found: {state_id}')
+    if not isinstance(flds, dict):
+        raise ValueError(f'Bad type for {type(flds)=}')
+    
+    state_cache[state_id].update(flds)
+    return state_id
+
+
+def get(state_id: str) -> dict:
+    """Retrieve a state by ID."""
+    if not is_valid_id(state_id):
+        raise ValueError(f'Invalid ID: {state_id}')
+    if state_id not in state_cache:
+        raise KeyError(f'State not found: {state_id}')
+    return state_cache[state_id]
+
+
+def delete(state_id: str):
+    """Delete a state by ID."""
+    if not is_valid_id(state_id):
+        raise ValueError(f'Invalid ID: {state_id}')
+    if state_id not in state_cache:
+        raise KeyError(f'State not found: {state_id}')
+    del state_cache[state_id]
+
+
+def read() -> dict:
+    return state_cache
 
 
 def create(flds: dict):

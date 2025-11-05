@@ -51,6 +51,14 @@ def create(flds: dict):
     dbc.update(STATE_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
     return new_id
 
+
+def update(_id: str, flds: dict):
+    if not is_valid_id(_id):
+        raise ValueError(f'Invalid ID: {_id}')
+    if not isinstance(flds, dict):
+        raise ValueError(f'Bad type for {type(flds)=}')
+    dbc.update(STATE_COLLECTION, {ID: _id}, flds)
+    return _id
     
 def main():
     print(read())

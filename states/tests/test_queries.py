@@ -1,5 +1,6 @@
 from copy import deepcopy
 from unittest.mock import patch, MagicMock
+from bson import ObjectId
 
 import pytest
 
@@ -24,9 +25,8 @@ def mock_db_operations():
         pass
     
     def mock_create(collection, doc):
-        global _next_id
-        doc_id = str(_next_id)
-        _next_id += 1
+        new_obj_id = ObjectId()
+        doc_id = str(new_obj_id)
         _test_db[doc_id] = {**doc, 'id': doc_id}
         return doc_id
     

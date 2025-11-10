@@ -133,7 +133,16 @@ def test_update():
     assert result_id == state_id
     updated_state = qry.get(state_id)
     assert updated_state[qry.NAME] == temp_rec[qry.NAME] + " Updated"
-    
+
+def test_update_population():
+    temp_rec = get_temp_rec()
+    state_id = qry.create(temp_rec)
+    new_population = 12345678
+    update_data = {qry.POPULATION: new_population}
+    result_id = qry.update(state_id, update_data)
+    assert result_id == state_id
+    updated_state = qry.get(state_id)
+    assert updated_state[qry.POPULATION] == new_population
     
 def test_update_bad_id():
     with pytest.raises(ValueError):
@@ -150,7 +159,7 @@ def test_update_bad_fields_param_type():
     with pytest.raises(ValueError):
         qry.update(state_id, 123)
         
-        
+     
 def test_get():
     temp_rec = get_temp_rec()
     state_id = qry.create(temp_rec)

@@ -10,6 +10,7 @@ from flask_cors import CORS
 
 # import werkzeug.exceptions as wz
 import cities.queries as cqry
+import states.queries as sqry
 
 app = Flask(__name__)
 CORS(app)
@@ -21,6 +22,20 @@ city_model = api.model('City', {
                           example='New York'),
     'state_code': fields.String(required=True, description='State code',
                                 example='NY')
+})
+
+# Define the state model for Swagger documentation
+state_model = api.model('State', {
+    'name': fields.String(required=True, description='State name',
+                          example='New York'),
+    'abbreviation': fields.String(required=False,
+                                  description='State abbreviation',
+                                  example='NY'),
+    'capital': fields.String(required=False, description='Capital city',
+                             example='Albany'),
+    'population': fields.Integer(required=False,
+                                 description='State population',
+                                 example=19450000)
 })
 
 MESSAGE = 'Message'
@@ -39,6 +54,12 @@ CITIES_RESP = 'Cities'
 CITY_ID = 'city_id'
 CITY_EP = '/cities/<city_id>'
 CITY_RESP = 'City'
+
+STATES_EPS = '/states'
+STATES_RESP = 'States'
+STATE_ID = 'state_id'
+STATE_EP = '/states/<state_id>'
+STATE_RESP = 'State'
 
 
 @api.route(f'{CITIES_EPS}')
@@ -118,6 +139,39 @@ class City(Resource):
         except KeyError as err:
             return {ERROR: str(err)}, 404
         return {MESSAGE: f"City {city_id} deleted successfully"}
+
+
+@api.route(f'{STATES_EPS}')
+class States(Resource):
+    """
+    This class handles operations on the states collection.
+    """
+    def get(self):
+        """
+        Get all states.
+        """
+        try:
+            states = sqry.read()
+        except ConnectionError as err:
+            return {ERROR: str(err)}
+        return {STATES_RESP: states}
+
+    @api.expect(state_model)
+    def post(self):
+        """
+        Create a new state
+        """
+        try:
+            data = request.json
+            if data is None:
+                return {ERROR: "Request body must contain JSON data"}, 400
+            state_id = sqry.create(data)
+        except ConnectionError as err:
+            return {ERROR: str(err)}
+        except ValueError as err:
+            return {ERROR: str(err)}
+        return {STATES_RESP: {"state_id": state_id}}
+
 
 
 @api.route(HELLO_EP)

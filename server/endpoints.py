@@ -173,6 +173,51 @@ class States(Resource):
         return {STATES_RESP: {"state_id": state_id}}
 
 
+@api.route(STATE_EP)
+class State(Resource):
+    """
+    This class handles operations on individual states.
+    """
+    def get(self, state_id):
+        """
+        Get a single state by ID.
+        """
+        try:
+            state = sqry.get(state_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {STATE_RESP: state}
+
+    @api.expect(state_model)
+    def put(self, state_id):
+        """
+        Update a state by ID.
+        """
+        try:
+            data = request.json
+            sqry.update(state_id, data)
+            updated_state = sqry.get(state_id)
+            updated_state['state_id'] = updated_state.get('id', state_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {STATE_RESP: updated_state}, 200
+
+    def delete(self, state_id):
+        """
+        Delete a state by ID.
+        """
+        try:
+            sqry.delete(state_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {MESSAGE: f"State {state_id} deleted successfully"}
+
 
 @api.route(HELLO_EP)
 class HelloWorld(Resource):

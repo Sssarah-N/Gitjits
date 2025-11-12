@@ -75,7 +75,7 @@ class Cities(Resource):
         try:
             cities = cqry.read()
         except ConnectionError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 503
         return {CITIES_RESP: cities}
 
     @api.expect(city_model)
@@ -89,9 +89,9 @@ class Cities(Resource):
                 return {ERROR: "Request body must contain JSON data"}, 400
             city_id = cqry.create(data)
         except ConnectionError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 503
         except ValueError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 400
         return {CITIES_RESP: {"city_id": city_id}}
 
 
@@ -153,7 +153,7 @@ class States(Resource):
         try:
             states = sqry.read()
         except ConnectionError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 503
         return {STATES_RESP: states}
 
     @api.expect(state_model)
@@ -167,9 +167,9 @@ class States(Resource):
                 return {ERROR: "Request body must contain JSON data"}, 400
             state_id = sqry.create(data)
         except ConnectionError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 503
         except ValueError as err:
-            return {ERROR: str(err)}
+            return {ERROR: str(err)}, 400
         return {STATES_RESP: {"state_id": state_id}}
 
 

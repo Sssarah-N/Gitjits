@@ -144,6 +144,15 @@ def test_update_population():
     updated_state = qry.get(state_id)
     assert updated_state[qry.POPULATION] == new_population
     
+
+def test_update_population_bad_type():
+    temp_rec = get_temp_rec()
+    state_id = qry.create(temp_rec)
+    update_data = {qry.POPULATION: "a lot"}
+    with pytest.raises(ValueError):
+        qry.update(state_id, update_data)
+
+    
 def test_update_bad_id():
     with pytest.raises(ValueError):
         qry.update(123, {qry.NAME: "California"})

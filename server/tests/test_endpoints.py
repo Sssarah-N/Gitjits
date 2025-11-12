@@ -308,3 +308,25 @@ def test_update_nonexistent_city():
     city_id = "New Orleans"
     with pytest.raises(KeyError):
         cqry.update(city_id, {cqry.NAME: "Ghosttown"})
+
+
+# ============= STATE ENDPOINT TESTS =============
+
+def test_states_get():
+    """Test getting all states."""
+    resp = TEST_CLIENT.get(f"{ep.STATES_EPS}")
+    resp_json = resp.get_json()
+    assert ep.STATES_RESP in resp_json
+    assert isinstance(resp_json[ep.STATES_RESP], list)
+
+
+def test_states_post():
+    """Test creating a state."""
+    resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
+                           json={"name": "California",
+                                 "abbreviation": "CA",
+                                 "capital": "Sacramento",
+                                 "population": 39500000})
+    resp_json = resp.get_json()
+    assert ep.STATES_RESP in resp_json
+    assert "state_id" in resp_json[ep.STATES_RESP]

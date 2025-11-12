@@ -235,7 +235,7 @@ class CitiesByState(Resource):
             all_cities = cqry.read()
             # Filter cities by state_code (case-insensitive)
             filtered = [
-                city for city in all_cities 
+                city for city in all_cities
                 if city.get('state_code', '').upper() == state_code.upper()
             ]
             return {CITIES_RESP: filtered}

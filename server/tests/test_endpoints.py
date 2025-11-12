@@ -245,6 +245,33 @@ def test_city_delete_twice():
       assert ep.ERROR in resp_json
 
 
+# ============= CITIES BY STATE ENDPOINT TESTS =============
+
+def test_cities_by_state_valid():
+    """Test getting cities by state code."""
+    # Create cities in different states
+    TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                     json={"name": "Houston", "state_code": "TX"})
+    TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                     json={"name": "Dallas", "state_code": "TX"})
+    TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                     json={"name": "Austin", "state_code": "TX"})
+    TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                     json={"name": "Miami", "state_code": "FL"})
+    
+    # Get cities in Texas
+    resp = TEST_CLIENT.get(f"{ep.CITIES_BY_STATE_EP}".replace("<state_code>", "TX"))
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.CITIES_RESP in resp_json
+    
+    # Filter for cities we just created (in case DB has others)
+    tx_cities = [city for city in resp_json[ep.CITIES_RESP]
+                 if city.get('name') in ['Houston', 'Dallas', 'Austin']]
+    assert len(tx_cities) >= 3
+
+
+
 # ============= TESTS USING FIXTURES =============
 
 def test_city_post_with_fixture(test_client, sample_city_data):

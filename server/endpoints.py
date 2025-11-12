@@ -61,6 +61,8 @@ STATE_ID = 'state_id'
 STATE_EP = '/states/<state_id>'
 STATE_RESP = 'State'
 
+CITIES_BY_STATE_EP = '/cities/by-state/<state_code>'
+
 
 @api.route(f'{CITIES_EPS}')
 class Cities(Resource):
@@ -217,6 +219,28 @@ class State(Resource):
         except KeyError as err:
             return {ERROR: str(err)}, 404
         return {MESSAGE: f"State {state_id} deleted successfully"}
+
+
+@api.route(CITIES_BY_STATE_EP)
+class CitiesByState(Resource):
+    """
+    Get all cities by state code.
+    """
+    def get(self, state_code):
+        """
+        Get all cities in a given state by state code.
+        Example: /cities/by-state/NY returns all cities in New York
+        """
+        try:
+            all_cities = cqry.read()
+            # Filter cities by state_code (case-insensitive)
+            filtered = [
+                city for city in all_cities 
+                if city.get('state_code', '').upper() == state_code.upper()
+            ]
+            return {CITIES_RESP: filtered}
+        except ConnectionError as err:
+            return {ERROR: str(err)}, 503
 
 
 @api.route(HELLO_EP)

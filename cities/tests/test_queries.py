@@ -45,6 +45,10 @@ def test_good_create():
     assert qry.is_valid_id(new_rec_id)
     assert qry.num_cities() > old_count
 
+    qry.delete(new_rec_id)
+    assert not qry.read(new_rec_id)
+    assert qry.num_cities() == old_count
+
 
 def test_create_no_name():
     with pytest.raises(ValueError):
@@ -73,6 +77,9 @@ def test_create_preserves_extra_fields():
     city_id = qry.create(city)
     stored = qry.get(city_id)
     assert stored["population"] == 12345
+
+    qry.delete(city_id)
+    assert not qry.read(city_id)
 
 
 @pytest.mark.skip(reason='Currently adds duplicate cities as new entries')

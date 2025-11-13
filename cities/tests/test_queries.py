@@ -88,16 +88,15 @@ def test_create_duplicate():
         qry.create(qry.SAMPLE_CITY)
 
 
-def test_update():
-    temp_rec = get_temp_rec()  
-    city_id = qry.create(temp_rec)
-    update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.STATE_CODE: temp_rec[qry.STATE_CODE]}
-    result_id = qry.update(city_id, update_data)
+def test_update(temp_city):
+    update_data = {qry.NAME: qry.SAMPLE_CITY[qry.NAME] + " Updated", qry.STATE_CODE: qry.SAMPLE_CITY[qry.STATE_CODE]}
+    result_id = qry.update(temp_city, update_data)
     
     # Verify update worked
-    assert result_id == city_id
-    updated_city = qry.get(city_id)
-    assert updated_city[qry.NAME] == temp_rec[qry.NAME] + " Updated"
+    assert result_id == temp_city
+    updated_city = qry.get(temp_city)
+    assert updated_city[qry.NAME] == update_data[qry.NAME]
+    assert updated_city[qry.STATE_CODE] == update_data[qry.STATE_CODE]
     
     
 def test_update_bad_id():
@@ -110,18 +109,15 @@ def test_update_missing_id():
         qry.update("NYC", {qry.NAME: "New York"})
 
 
-def test_update_bad_fields_param_type():
-    city_id = qry.create(get_temp_rec())
+def test_update_bad_fields_param_type(temp_city):
     with pytest.raises(ValueError):
-        qry.update(city_id, 123)
+        qry.update(temp_city, 123)
         
         
-def test_get():
-    temp_rec = get_temp_rec()
-    city_id = qry.create(temp_rec)
-    city = qry.get(city_id)
-    assert city[qry.NAME] == temp_rec[qry.NAME]
-    assert city[qry.STATE_CODE] == temp_rec[qry.STATE_CODE]
+def test_get(temp_city):
+    city = qry.get(temp_city)
+    assert city[qry.NAME] == qry.SAMPLE_CITY[qry.NAME]
+    assert city[qry.STATE_CODE] == qry.SAMPLE_CITY[qry.STATE_CODE]
 
 
 def test_get_bad_id():
@@ -134,13 +130,11 @@ def test_get_missing_id():
         qry.get("999")
 
 
-def test_delete():
-    temp_rec = get_temp_rec()
-    city_id = qry.create(temp_rec)
-    qry.delete(city_id)
+def test_delete(temp_city):
+    qry.delete(temp_city)
     # Verify city is deleted by trying to get it
     with pytest.raises(KeyError):
-        qry.get(city_id)
+        qry.get(temp_city)
     
 
 def test_delete_bad_id():
@@ -149,9 +143,11 @@ def test_delete_bad_id():
 
 
 def test_delete_missing_id():
+    with pytest.raises(ValueError):
+        qry.read(123)
     with pytest.raises(KeyError):
-        qry.create({qry.NAME: "New York", qry.STATE_CODE: "NY"})
-        qry.delete("NYC")
+        qry.delete(123)
+
 
 def test_read(temp_city):
     cities = qry.read()

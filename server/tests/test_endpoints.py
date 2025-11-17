@@ -381,3 +381,33 @@ def test_state_get_valid():
     assert resp_json[ep.STATE_RESP]["name"] == "Illinois"
 
     TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
+
+def test_state_put_valid():
+    """Test updating a state with valid data."""
+    resp = TEST_CLIENT.post(
+        f"{ep.STATES_EPS}",
+        json={
+            "name": "Illinois",
+            "abbreviation": "IL",
+                       "capital": "Springfield",
+            "population": 12800000
+        }
+    )
+    state_id = resp.get_json()[ep.STATES_RESP]["state_id"]
+
+    update_resp = TEST_CLIENT.put(
+        f"{ep.STATES_EPS}/{state_id}",
+        json={
+            "name": "New Illinois",
+            "abbreviation": "IL",
+            "capital": "Chicago",
+            "population": 13000000
+        }
+    )
+
+    assert update_resp.status_code == 200
+    data = update_resp.get_json()[ep.STATE_RESP]
+    assert data["name"] == "New Illinois"
+    assert data["capital"] == "Chicago"
+    assert data["population"] == 13000000
+    assert str(data["state_id"]) == str(state_id)

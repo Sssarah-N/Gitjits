@@ -359,3 +359,25 @@ def test_states_post():
     resp_json = resp.get_json()
     assert ep.STATES_RESP in resp_json
     assert "state_id" in resp_json[ep.STATES_RESP]
+
+
+def test_state_get_valid():
+    """Test getting a single state by ID."""
+    resp = TEST_CLIENT.post(
+        f"{ep.STATES_EPS}",
+        json={
+            "name": "Illinois",
+            "abbreviation": "IL",
+            "capital": "Springfield",
+            "population": 12800000
+        }
+    )
+    state_id = resp.get_json()[ep.STATES_RESP]["state_id"]
+
+    resp = TEST_CLIENT.get(f"{ep.STATES_EPS}/{state_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.STATE_RESP in resp_json
+    assert resp_json[ep.STATE_RESP]["name"] == "Illinois"
+
+    TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")

@@ -144,9 +144,9 @@ def test_delete_bad_id():
 
 def test_delete_missing_id():
     with pytest.raises(ValueError):
-        qry.read()
+        qry.delete("")
     with pytest.raises(KeyError):
-        qry.delete(123)
+        qry.delete("nonexistent_id_12345")
 
 
 def test_read(temp_city):

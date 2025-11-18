@@ -78,6 +78,8 @@ def update(state_id: str, flds: dict):
         raise ValueError(f'Invalid ID: {state_id}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
+    if POPULATION in flds and not isinstance(flds[POPULATION], int):
+        raise ValueError(f'Population must be an integer, got {type(flds[POPULATION]).__name__}')
 
     updated = dbc.update(STATE_COLLECTION, {ID: state_id}, flds)
 

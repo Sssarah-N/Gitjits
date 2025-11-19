@@ -411,3 +411,11 @@ def test_state_put_valid():
     assert data["capital"] == "Chicago"
     assert data["population"] == 13000000
     assert str(data["state_id"]) == str(state_id)
+
+
+def test_state_get_not_found():
+    """Test getting state that doesn't exist."""
+    resp = TEST_CLIENT.get(f"{ep.STATES_EPS}/nonexistent_state_id_999")
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+    assert resp.status_code == NOT_FOUND

@@ -419,3 +419,209 @@ def test_state_get_not_found():
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
     assert resp.status_code == NOT_FOUND
+
+
+# ============= COUNTRY ENDPOINT TESTS =============
+
+def test_countries_get():
+    """Test getting all countries."""
+    resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}")
+    resp_json = resp.get_json()
+    assert ep.COUNTRIES_RESP in resp_json
+    assert isinstance(resp_json[ep.COUNTRIES_RESP], list)
+
+
+def test_countries_post():
+    """Test creating a country."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Canada",
+                                 "code": "CA",
+                                 "capital": "Ottawa",
+                                 "population": 38000000,
+                                 "continent": "North America"})
+    resp_json = resp.get_json()
+    assert ep.COUNTRIES_RESP in resp_json
+    assert "country_id" in resp_json[ep.COUNTRIES_RESP]
+    
+    country_id = resp_json[ep.COUNTRIES_RESP]["country_id"]
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_countries_post_minimal():
+    """Test creating country with only required fields."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Test Country"})
+    resp_json = resp.get_json()
+    assert ep.COUNTRIES_RESP in resp_json
+    assert "country_id" in resp_json[ep.COUNTRIES_RESP]
+    
+    country_id = resp_json[ep.COUNTRIES_RESP]["country_id"]
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_countries_post_missing_name():
+    """Test creating country without required name field."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"code": "XX"})
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+    assert resp.status_code == BAD_REQUEST
+
+
+def test_countries_post_invalid_data_type():
+    """Test creating country with non-dict data."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json="not a dict")
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+    assert resp.status_code == BAD_REQUEST
+
+
+def test_country_get_valid():
+    """Test getting a single country by ID."""
+    resp = TEST_CLIENT.post(
+        f"{ep.COUNTRIES_EPS}",
+        json={
+            "name": "Japan",
+            "code": "JP",
+            "capital": "Tokyo",
+            "population": 126000000,
+            "continent": "Asia"
+        }
+    )
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+
+    resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.COUNTRY_RESP in resp_json
+    assert resp_json[ep.COUNTRY_RESP]["name"] == "Japan"
+
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_country_get_not_found():
+    """Test getting country that doesn't exist."""
+    resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}/nonexistent_country_id_999")
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+    assert resp.status_code == NOT_FOUND
+
+
+def test_country_put_valid():
+    """Test updating a country with valid data."""
+    resp = TEST_CLIENT.post(
+        f"{ep.COUNTRIES_EPS}",
+        json={
+            "name": "Mexico",
+            "code": "MX",
+            "capital": "Mexico City",
+            "population": 128000000
+        }
+    )
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+
+    update_resp = TEST_CLIENT.put(
+        f"{ep.COUNTRIES_EPS}/{country_id}",
+        json={
+            "name": "United Mexican States",
+            "code": "MX",
+            "capital": "Mexico City",
+            "population": 130000000,
+            "continent": "North America"
+        }
+    )
+
+    assert update_resp.status_code == OK
+    data = update_resp.get_json()[ep.COUNTRY_RESP]
+    assert data["name"] == "United Mexican States"
+    assert data["population"] == 130000000
+    assert data.get("continent") == "North America"
+    assert str(data["country_id"]) == str(country_id)
+
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_country_put_not_found():
+    """Test updating a country that doesn't exist."""
+    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/nonexistent_country_id_999",
+                          json={"name": "Ghost Country"})
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_country_put_invalid_data_type():
+    """Test updating a country with non-dict data."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Test Country", "code": "TC"})
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+    
+    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_id}", json="not a dict")
+    assert resp.status_code == BAD_REQUEST
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_country_put_empty_body():
+    """Test updating a country with empty dict."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Brazil", "code": "BR"})
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+    
+    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_id}", json={})
+    assert resp.status_code == OK
+
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
+
+def test_country_delete_valid():
+    """Test deleting a country with valid ID."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Test Country to Delete", "code": "TD"})
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+    
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.MESSAGE in resp_json
+    assert country_id in resp_json[ep.MESSAGE]
+
+
+def test_country_delete_and_verify_removed():
+    """Test that deleted country is actually removed."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "Temporary Country", "code": "TC"})
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+    
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == OK
+    
+    resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_country_delete_not_found():
+    """Test deleting a country that doesn't exist."""
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/nonexistent_country_id_999")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_country_delete_twice():
+    """Test deleting the same country twice (should fail second time)."""
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                           json={"name": "One-time Country", "code": "OT"})
+    country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+    
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == OK
+    
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json

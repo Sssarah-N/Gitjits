@@ -11,6 +11,7 @@ from flask_cors import CORS
 # import werkzeug.exceptions as wz
 import cities.queries as cqry
 import states.queries as sqry
+import countries.queries as coqry
 
 app = Flask(__name__)
 CORS(app)
@@ -38,6 +39,22 @@ state_model = api.model('State', {
                                  example=19450000)
 })
 
+# Define the country model for Swagger documentation
+country_model = api.model('Country', {
+    'name': fields.String(required=True, description='Country name',
+                          example='United States'),
+    'code': fields.String(required=False,
+                         description='ISO country code',
+                         example='US'),
+    'capital': fields.String(required=False, description='Capital city',
+                            example='Washington, D.C.'),
+    'population': fields.Integer(required=False,
+                                description='Country population',
+                                example=331000000),
+    'continent': fields.String(required=False, description='Continent',
+                              example='North America')
+})
+
 MESSAGE = 'Message'
 ERROR = "Error"
 READ = 'read'
@@ -60,6 +77,12 @@ STATES_RESP = 'States'
 STATE_ID = 'state_id'
 STATE_EP = '/states/<state_id>'
 STATE_RESP = 'State'
+
+COUNTRIES_EPS = '/countries'
+COUNTRIES_RESP = 'Countries'
+COUNTRY_ID = 'country_id'
+COUNTRY_EP = '/countries/<country_id>'
+COUNTRY_RESP = 'Country'
 
 CITIES_BY_STATE_EP = '/cities/by-state/<state_code>'
 
@@ -254,6 +277,101 @@ class HelloWorld(Resource):
         A trivial endpoint to see if the server is running.
         """
         return {HELLO_RESP: 'world'}
+
+
+@api.route(f'{COUNTRIES_EPS}')
+class Countries(Resource):
+    """
+    This class handles operations on the countries collection.
+    """
+    def get(self):
+        """
+        Get all countries.
+        Returns a list of all countries in the database.
+        """
+        try:
+            countries = coqry.read()
+        except ConnectionError as err:
+            return {ERROR: str(err)}, 503
+        return {COUNTRIES_RESP: countries}
+
+    @api.expect(country_model)
+    @api.response(200, 'Country created successfully')
+    @api.response(400, 'Validation error')
+    @api.response(503, 'Database connection error')
+    def post(self):
+        """
+        Create a new country.
+        Requires 'name' field. Optional fields: code, capital, population, continent.
+        """
+        try:
+            data = request.json
+            if data is None:
+                return {ERROR: "Request body must contain JSON data"}, 400
+            country_id = coqry.create(data)
+        except ConnectionError as err:
+            return {ERROR: str(err)}, 503
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        return {COUNTRIES_RESP: {"country_id": country_id}}
+
+
+@api.route(COUNTRY_EP)
+class Country(Resource):
+    """
+    This class handles operations on individual countries.
+    """
+    @api.response(200, 'Success')
+    @api.response(400, 'Invalid ID')
+    @api.response(404, 'Country not found')
+    def get(self, country_id):
+        """
+        Get a single country by ID.
+        Returns detailed information about a specific country.
+        """
+        try:
+            country = coqry.get(country_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {COUNTRY_RESP: country}
+
+    @api.expect(country_model)
+    @api.response(200, 'Country updated successfully')
+    @api.response(400, 'Validation error')
+    @api.response(404, 'Country not found')
+    def put(self, country_id):
+        """
+        Update a country by ID.
+        All fields are optional. Only provided fields will be updated.
+        """
+        try:
+            data = request.json
+            coqry.update(country_id, data)
+            updated_country = coqry.get(country_id)
+            updated_country['country_id'] = updated_country.get('id', country_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {COUNTRY_RESP: updated_country}, 200
+
+    @api.response(200, 'Country deleted successfully')
+    @api.response(400, 'Invalid ID')
+    @api.response(404, 'Country not found')
+    def delete(self, country_id):
+        """
+        Delete a country by ID.
+        This will permanently remove the country from the database.
+        """
+        try:
+            coqry.delete(country_id)
+        except ValueError as err:
+            return {ERROR: str(err)}, 400
+        except KeyError as err:
+            return {ERROR: str(err)}, 404
+        return {MESSAGE: f"Country {country_id} deleted successfully"}
 
 
 @api.route(ENDPOINT_EP)

@@ -44,15 +44,15 @@ country_model = api.model('Country', {
     'name': fields.String(required=True, description='Country name',
                           example='United States'),
     'code': fields.String(required=False,
-                         description='ISO country code',
-                         example='US'),
+                          description='ISO country code',
+                          example='US'),
     'capital': fields.String(required=False, description='Capital city',
-                            example='Washington, D.C.'),
+                             example='Washington, D.C.'),
     'population': fields.Integer(required=False,
-                                description='Country population',
-                                example=331000000),
+                                 description='Country population',
+                                 example=331000000),
     'continent': fields.String(required=False, description='Continent',
-                              example='North America')
+                               example='North America')
 })
 
 MESSAGE = 'Message'
@@ -302,7 +302,8 @@ class Countries(Resource):
     def post(self):
         """
         Create a new country.
-        Requires 'name' field. Optional fields: code, capital, population, continent.
+        Requires 'name' field. Optional: code, capital, population,
+        continent.
         """
         try:
             data = request.json
@@ -350,7 +351,8 @@ class Country(Resource):
             data = request.json
             coqry.update(country_id, data)
             updated_country = coqry.get(country_id)
-            updated_country['country_id'] = updated_country.get('id', country_id)
+            updated_country['country_id'] = updated_country.get(
+                'id', country_id)
         except ValueError as err:
             return {ERROR: str(err)}, 400
         except KeyError as err:

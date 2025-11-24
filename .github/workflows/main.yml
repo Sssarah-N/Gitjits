@@ -42,7 +42,7 @@ jobs:
       - name: Install MongoDB in a Docker container.
         uses: supercharge/mongodb-github-action@1.8.0
 
-      - name: Install Python packages.
+      - name: Set up development environment
         run: make dev_env
 
       - name: Run Python tests.

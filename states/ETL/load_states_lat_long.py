@@ -1,12 +1,28 @@
 import sys
 import csv
 
+from states.queries import (
+    NAME,
+    ABBREVIATION,
+    LATITUDE,
+    LONGITUDE,
+    COUNTRY_CODE,
+    create,
+)
+
+CURR_COUNTRY = 'USA'
+
+# CSV field mapping
+CSV_CODE = 'code'
+CSV_NAME = 'name'
+CSV_LATITUDE = 'latitude'
+CSV_LONGITUDE = 'longitude'
 
 def extract(flnm: str) -> list:
     state_list = []
     try:
         with open(flnm) as f:
-            reader = csv.reader(f, delimiter='\t')
+            reader = csv.DictReader(f, delimiter='\t')
             for row in reader:
                 state_list.append(row)
     except Exception as e:
@@ -17,19 +33,22 @@ def extract(flnm: str) -> list:
 
 def transform(state_list: list) -> list:
     rev_list = []
-    col_names = state_list.pop(0)
-    print(f'{col_names=}')
     for state in state_list:
-        state_dict = {}
-        for i, fld in enumerate(col_names):
-            state_dict[fld] = state[i]
-        print(f'{state_dict=}')
+        # Map CSV fields to database fields
+        state_dict = {
+            NAME: state[CSV_NAME],
+            ABBREVIATION: state[CSV_CODE],  # Map 'code' to 'abbreviation'
+            LATITUDE: float(state[CSV_LATITUDE]),
+            LONGITUDE: float(state[CSV_LONGITUDE]),
+            COUNTRY_CODE: CURR_COUNTRY
+        }
         rev_list.append(state_dict)
     return rev_list
 
 
 def load(rev_list: list):
-    pass
+    for state in rev_list:
+        create(state, reload=False)
 
 
 def main():
@@ -38,7 +57,6 @@ def main():
         exit(1)
     state_list = extract(sys.argv[1])
     rev_list = transform(state_list)
-    print(f'{rev_list=}')
     load(rev_list)
 
 

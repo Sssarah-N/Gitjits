@@ -13,12 +13,17 @@ NAME = 'name'
 ABBREVIATION = 'abbreviation'
 CAPITAL = 'capital'
 POPULATION = 'population'
+CODE = 'code'
+LATITUDE = 'latitude'
+LONGITUDE = 'longitude'
+COUNTRY_CODE = 'country_code'
 
 SAMPLE_STATE = {
     NAME: 'New York',
     ABBREVIATION: 'NY',
     CAPITAL: 'Albany',
-    POPULATION: 19450000
+    POPULATION: 19450000,
+    COUNTRY_CODE: 'USA'
 }
 
 state_cache = {
@@ -40,7 +45,7 @@ def num_states() -> int:
     return len(read())
 
 
-def create(flds: dict):
+def create(flds: dict, reload=True):
     """
     Create a new state.
     
@@ -55,6 +60,8 @@ def create(flds: dict):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
     new_id = dbc.create(STATE_COLLECTION, flds)
     print(f'{new_id=}')
+    if reload:
+        load_cache()
     dbc.update(STATE_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
     return new_id
 
@@ -110,7 +117,18 @@ def delete(state_id: str):
 
 def read() -> list:
     return dbc.read(STATE_COLLECTION)
+
+
+def load_cache():
+    global cache
+    cache = {}
+    states = dbc.read(STATE_COLLECTION)
+    for state in states:
+        if ABBREVIATION in state:
+            country = state.get(COUNTRY_CODE, 'USA')  
+            cache[(state[ABBREVIATION], country)] = state
     
 def main():
+    create(SAMPLE_STATE)
     print(read())
 

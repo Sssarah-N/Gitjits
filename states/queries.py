@@ -58,8 +58,15 @@ def create(flds: dict, reload=True):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
+    if LATITUDE in flds:
+        lat = flds[LATITUDE]
+        if not isinstance(lat, (int, float)) or not (-90 <= lat <= 90):
+            raise ValueError(f'Latitude must be a number between -90 and 90, got {lat}')
+    if LONGITUDE in flds:
+        lon = flds[LONGITUDE]
+        if not isinstance(lon, (int, float)) or not (-180 <= lon <= 180):
+            raise ValueError(f'Longitude must be a number between -180 and 180, got {lon}')
     new_id = dbc.create(STATE_COLLECTION, flds)
-    print(f'{new_id=}')
     if reload:
         load_cache()
     dbc.update(STATE_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
@@ -87,6 +94,14 @@ def update(state_id: str, flds: dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if POPULATION in flds and not isinstance(flds[POPULATION], int):
         raise ValueError(f'Population must be an integer, got {type(flds[POPULATION]).__name__}')
+    if LATITUDE in flds:
+        lat = flds[LATITUDE]
+        if not isinstance(lat, (int, float)) or not (-90 <= lat <= 90):
+            raise ValueError(f'Latitude must be a number between -90 and 90, got {lat}')
+    if LONGITUDE in flds:
+        lon = flds[LONGITUDE]
+        if not isinstance(lon, (int, float)) or not (-180 <= lon <= 180):
+            raise ValueError(f'Longitude must be a number between -180 and 180, got {lon}')
 
     updated = dbc.update(STATE_COLLECTION, {ID: state_id}, flds)
 

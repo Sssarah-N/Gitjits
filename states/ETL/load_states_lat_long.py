@@ -34,21 +34,29 @@ def extract(flnm: str) -> list:
 def transform(state_list: list) -> list:
     rev_list = []
     for state in state_list:
-        # Map CSV fields to database fields
-        state_dict = {
-            NAME: state[CSV_NAME],
-            ABBREVIATION: state[CSV_CODE],  # Map 'code' to 'abbreviation'
-            LATITUDE: float(state[CSV_LATITUDE]),
-            LONGITUDE: float(state[CSV_LONGITUDE]),
-            COUNTRY_CODE: CURR_COUNTRY
-        }
-        rev_list.append(state_dict)
+        try:
+            # Map CSV fields to database fields
+            state_dict = {
+                NAME: state[CSV_NAME],
+                ABBREVIATION: state[CSV_CODE],  # Map 'code' to 'abbreviation'
+                LATITUDE: float(state[CSV_LATITUDE]),
+                LONGITUDE: float(state[CSV_LONGITUDE]),
+                COUNTRY_CODE: CURR_COUNTRY
+            }
+            rev_list.append(state_dict)
+        except Exception as e:
+            print(f'Problem transforming state {state[CSV_NAME]}: {str(e)}')
+            continue
     return rev_list
 
 
 def load(rev_list: list):
     for state in rev_list:
-        create(state, reload=False)
+        try:
+            create(state, reload=False)
+        except Exception as e:
+            print(f'Problem loading state {state[NAME]}: {str(e)}')
+            continue
 
 
 def main():

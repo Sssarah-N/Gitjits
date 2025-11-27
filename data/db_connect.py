@@ -36,15 +36,15 @@ def connect_db():
     global client
     if client is None:  # not connected yet!
         print('Setting client because it is None.')
-        if os.environ.get('CLOUD_MONGO', LOCAL) == CLOUD:
+        if os.environ.get('CLOUD', LOCAL) == CLOUD:
             password = os.environ.get('MONGO_PASSWD')
             if not password:
                 raise ValueError('You must set your password '
                                  + 'to use Mongo in the cloud.')
             print('Connecting to Mongo in the cloud.')
-            client = pm.MongoClient(f'mongodb+srv://gcallah:{password}'
-                                    + '@koukoumongo1.yud9b.mongodb.net/'
-                                    + '?retryWrites=true&w=majority')
+            client = pm.MongoClient(f'mongodb+srv://Gitjits:{password}'
+                                    + '@gitjits.zzxtdpz.mongodb.net/'
+                                    + '?appName=Gitjits')
         else:
             print("Connecting to Mongo locally.")
             client = pm.MongoClient()

@@ -10,20 +10,19 @@ STATE_COLLECTION = 'states'
 
 ID = 'id'
 NAME = 'name'
-ABBREVIATION = 'abbreviation'
+STATE_CODE = 'state_code'  # Composite key with country_code (e.g., 'NY', 'CA', 'ON')
 CAPITAL = 'capital'
 POPULATION = 'population'
-CODE = 'code'
 LATITUDE = 'latitude'
 LONGITUDE = 'longitude'
-COUNTRY_CODE = 'country_code'
+COUNTRY_CODE = 'country_code'  # Composite key with state_code (e.g., 'US', 'CA', 'MX')
 
 SAMPLE_STATE = {
     NAME: 'New York',
-    ABBREVIATION: 'NY',
+    STATE_CODE: 'NY',
+    COUNTRY_CODE: 'US',
     CAPITAL: 'Albany',
-    POPULATION: 19450000,
-    COUNTRY_CODE: 'USA'
+    POPULATION: 19450000
 }
 
 state_cache = {
@@ -139,9 +138,9 @@ def load_cache():
     cache = {}
     states = dbc.read(STATE_COLLECTION)
     for state in states:
-        if ABBREVIATION in state:
-            country = state.get(COUNTRY_CODE, 'USA')  
-            cache[(state[ABBREVIATION], country)] = state
+        if STATE_CODE in state:
+            country = state.get(COUNTRY_CODE, 'US')  
+            cache[(state[STATE_CODE], country)] = state
     
 def main():
     create(SAMPLE_STATE)

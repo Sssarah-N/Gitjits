@@ -353,7 +353,8 @@ def test_states_post():
     """Test creating a state."""
     resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
                            json={"name": "California",
-                                 "abbreviation": "CA",
+                                 "state_code": "CA",
+                                 "country_code": "US",
                                  "capital": "Sacramento",
                                  "population": 39500000})
     resp_json = resp.get_json()
@@ -367,7 +368,8 @@ def test_state_get_valid():
         f"{ep.STATES_EPS}",
         json={
             "name": "Illinois",
-            "abbreviation": "IL",
+            "state_code": "IL",
+            "country_code": "US",
             "capital": "Springfield",
             "population": 12800000
         }
@@ -388,8 +390,9 @@ def test_state_put_valid():
         f"{ep.STATES_EPS}",
         json={
             "name": "Illinois",
-            "abbreviation": "IL",
-                       "capital": "Springfield",
+            "state_code": "IL",
+            "country_code": "US",
+            "capital": "Springfield",
             "population": 12800000
         }
     )
@@ -399,7 +402,8 @@ def test_state_put_valid():
         f"{ep.STATES_EPS}/{state_id}",
         json={
             "name": "New Illinois",
-            "abbreviation": "IL",
+            "state_code": "IL",
+            "country_code": "US",
             "capital": "Chicago",
             "population": 13000000
         }

@@ -126,7 +126,7 @@ def test_create_preserves_extra_fields():
 def test_update():
     temp_rec = get_temp_rec()  
     state_id = qry.create(temp_rec)
-    update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.ABBREVIATION: temp_rec[qry.ABBREVIATION]}
+    update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.STATE_CODE: temp_rec[qry.STATE_CODE]}
     result_id = qry.update(state_id, update_data)
     
     # Verify update worked
@@ -174,7 +174,7 @@ def test_get():
     state_id = qry.create(temp_rec)
     state = qry.get(state_id)
     assert state[qry.NAME] == temp_rec[qry.NAME]
-    assert state[qry.ABBREVIATION] == temp_rec[qry.ABBREVIATION]
+    assert state[qry.STATE_CODE] == temp_rec[qry.STATE_CODE]
 
 
 def test_get_bad_id():
@@ -203,7 +203,7 @@ def test_delete_bad_id():
 
 def test_delete_missing_id():
     with pytest.raises(KeyError):
-        qry.create({qry.NAME: "California", qry.ABBREVIATION: "CA"})
+        qry.create({qry.NAME: "California", qry.STATE_CODE: "CA", qry.COUNTRY_CODE: "US"})
         qry.delete("CA")
 
 

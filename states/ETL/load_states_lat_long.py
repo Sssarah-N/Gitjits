@@ -3,7 +3,7 @@ import csv
 
 from states.queries import (
     NAME,
-    ABBREVIATION,
+    STATE_CODE,
     LATITUDE,
     LONGITUDE,
     COUNTRY_CODE,
@@ -38,7 +38,7 @@ def transform(state_list: list) -> list:
             # Map CSV fields to database fields
             state_dict = {
                 NAME: state[CSV_NAME],
-                ABBREVIATION: state[CSV_CODE],  # Map 'code' to 'abbreviation'
+                STATE_CODE: state[CSV_CODE],  # Map 'code' to 'state_code'
                 LATITUDE: float(state[CSV_LATITUDE]),
                 LONGITUDE: float(state[CSV_LONGITUDE]),
                 COUNTRY_CODE: CURR_COUNTRY

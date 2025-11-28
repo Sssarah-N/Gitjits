@@ -292,7 +292,7 @@ class Statistics(Resource):
             countries = coqry.read()
             states = sqry.read()
             cities = cqry.read()
-            
+
             # Calculate statistics
             stats = {
                 'total_countries': len(countries),
@@ -301,17 +301,17 @@ class Statistics(Resource):
                 'database': 'Gitjits',
                 'collections': ['countries', 'states', 'cities'],
             }
-            
+
             # Optional: Add breakdown by country if data available
             country_breakdown = {}
             for state in states:
                 country_code = state.get('country_code', 'Unknown')
                 country_breakdown[country_code] = country_breakdown.get(
                     country_code, 0) + 1
-            
+
             if country_breakdown:
                 stats['states_by_country'] = country_breakdown
-            
+
             return {STATISTICS_RESP: stats}
         except ConnectionError as err:
             return {ERROR: str(err)}, 503
@@ -440,13 +440,13 @@ class DeleteAllData(Resource):
         """
         Delete all data from all collections.
         Returns count of deleted items.
-        
+
         **WARNING**: This operation cannot be undone!
         Use only in testing/development environments.
         """
         try:
             deleted_counts = {}
-            
+
             # Delete all cities
             cities = cqry.read()
             city_count = 0
@@ -457,7 +457,7 @@ class DeleteAllData(Resource):
                 except Exception:
                     pass
             deleted_counts['cities'] = city_count
-            
+
             # Delete all states
             states = sqry.read()
             state_count = 0
@@ -468,7 +468,7 @@ class DeleteAllData(Resource):
                 except Exception:
                     pass
             deleted_counts['states'] = state_count
-            
+
             # Delete all countries
             countries = coqry.read()
             country_count = 0
@@ -479,11 +479,11 @@ class DeleteAllData(Resource):
                 except Exception:
                     pass
             deleted_counts['countries'] = country_count
-            
+
             return {
                 DELETE_ALL_RESP: deleted_counts,
                 MESSAGE: f"Deleted {city_count} cities, {state_count} "
-                        f"states, {country_count} countries"
+                         f"states, {country_count} countries"
             }
         except Exception as err:
             return {ERROR: f'Error deleting data: {str(err)}'}, 500

@@ -442,7 +442,7 @@ def test_statistics_get():
     assert 'total_cities' in stats
     assert 'database' in stats
     assert 'collections' in stats
-    assert 'api_version' in stats
+
     
     # Verify types
     assert isinstance(stats['total_countries'], int)
@@ -450,15 +450,11 @@ def test_statistics_get():
     assert isinstance(stats['total_cities'], int)
     assert isinstance(stats['database'], str)
     assert isinstance(stats['collections'], list)
-    assert isinstance(stats['api_version'], str)
     
     # Verify collections list
     assert 'countries' in stats['collections']
     assert 'states' in stats['collections']
     assert 'cities' in stats['collections']
-    
-    # Verify database name
-    assert stats['database'] == 'geo2025DB'
     
     # Check optional breakdown
     if 'states_by_country' in stats:

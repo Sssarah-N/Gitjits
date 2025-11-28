@@ -425,6 +425,46 @@ def test_state_get_not_found():
     assert resp.status_code == NOT_FOUND
 
 
+# ============= STATISTICS ENDPOINT TESTS =============
+
+def test_statistics_get():
+    """Test getting database statistics."""
+    resp = TEST_CLIENT.get(ep.STATISTICS_EP)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.STATISTICS_RESP in resp_json
+    
+    stats = resp_json[ep.STATISTICS_RESP]
+    
+    # Check required fields
+    assert 'total_countries' in stats
+    assert 'total_states' in stats
+    assert 'total_cities' in stats
+    assert 'database' in stats
+    assert 'collections' in stats
+    assert 'api_version' in stats
+    
+    # Verify types
+    assert isinstance(stats['total_countries'], int)
+    assert isinstance(stats['total_states'], int)
+    assert isinstance(stats['total_cities'], int)
+    assert isinstance(stats['database'], str)
+    assert isinstance(stats['collections'], list)
+    assert isinstance(stats['api_version'], str)
+    
+    # Verify collections list
+    assert 'countries' in stats['collections']
+    assert 'states' in stats['collections']
+    assert 'cities' in stats['collections']
+    
+    # Verify database name
+    assert stats['database'] == 'geo2025DB'
+    
+    # Check optional breakdown
+    if 'states_by_country' in stats:
+        assert isinstance(stats['states_by_country'], dict)
+
+
 # ============= COUNTRY ENDPOINT TESTS =============
 
 def test_countries_get():

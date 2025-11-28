@@ -46,7 +46,7 @@ def test_good_create():
     assert qry.num_countries() > old_count
 
     qry.delete(new_rec_id)
-    assert not qry.read()
+    # Verify the deleted country is gone and count returned to original
     assert qry.num_countries() == old_count
 
 

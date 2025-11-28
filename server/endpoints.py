@@ -89,6 +89,12 @@ COUNTRY_RESP = 'Country'
 
 CITIES_BY_STATE_EP = '/cities/by-state/<state_code>'
 
+STATISTICS_EP = '/statistics'
+STATISTICS_RESP = 'Statistics'
+
+DELETE_ALL_EP = '/delete-all-data'
+DELETE_ALL_RESP = 'Deleted'
+
 
 @api.route(f'{CITIES_EPS}')
 class Cities(Resource):
@@ -269,6 +275,50 @@ class CitiesByState(Resource):
             return {ERROR: str(err)}, 503
 
 
+@api.route(STATISTICS_EP)
+class Statistics(Resource):
+    """
+    Get comprehensive database statistics.
+    Provides counts and metadata for all geographic entities.
+    """
+    def get(self):
+        """
+        Get overall database statistics.
+        Returns total counts for countries, states, and cities,
+        plus metadata about the database.
+        """
+        try:
+            # Get counts
+            countries = coqry.read()
+            states = sqry.read()
+            cities = cqry.read()
+            
+            # Calculate statistics
+            stats = {
+                'total_countries': len(countries),
+                'total_states': len(states),
+                'total_cities': len(cities),
+                'database': 'Gitjits',
+                'collections': ['countries', 'states', 'cities'],
+            }
+            
+            # Optional: Add breakdown by country if data available
+            country_breakdown = {}
+            for state in states:
+                country_code = state.get('country_code', 'Unknown')
+                country_breakdown[country_code] = country_breakdown.get(
+                    country_code, 0) + 1
+            
+            if country_breakdown:
+                stats['states_by_country'] = country_breakdown
+            
+            return {STATISTICS_RESP: stats}
+        except ConnectionError as err:
+            return {ERROR: str(err)}, 503
+        except Exception as err:
+            return {ERROR: f'Error getting statistics: {str(err)}'}, 500
+
+
 @api.route(HELLO_EP)
 class HelloWorld(Resource):
     """
@@ -377,6 +427,66 @@ class Country(Resource):
         except KeyError as err:
             return {ERROR: str(err)}, 404
         return {MESSAGE: f"Country {country_id} deleted successfully"}
+
+
+@api.route(DELETE_ALL_EP)
+class DeleteAllData(Resource):
+    """
+    Delete all test data from the database.
+    WARNING: This will delete ALL countries, states, and cities!
+    Use for testing and development only.
+    """
+    def delete(self):
+        """
+        Delete all data from all collections.
+        Returns count of deleted items.
+        
+        **WARNING**: This operation cannot be undone!
+        Use only in testing/development environments.
+        """
+        try:
+            deleted_counts = {}
+            
+            # Delete all cities
+            cities = cqry.read()
+            city_count = 0
+            for city in cities:
+                try:
+                    cqry.delete(city.get('id'))
+                    city_count += 1
+                except Exception:
+                    pass
+            deleted_counts['cities'] = city_count
+            
+            # Delete all states
+            states = sqry.read()
+            state_count = 0
+            for state in states:
+                try:
+                    sqry.delete(state.get('id'))
+                    state_count += 1
+                except Exception:
+                    pass
+            deleted_counts['states'] = state_count
+            
+            # Delete all countries
+            countries = coqry.read()
+            country_count = 0
+            for country in countries:
+                try:
+                    coqry.delete(country.get('id'))
+                    country_count += 1
+                except Exception:
+                    pass
+            deleted_counts['countries'] = country_count
+            
+            return {
+                DELETE_ALL_RESP: deleted_counts,
+                MESSAGE: f"Deleted {city_count} cities, {state_count} "
+                        f"states, {country_count} countries"
+            }
+        except Exception as err:
+            return {ERROR: f'Error deleting data: {str(err)}'}, 500
 
 
 @api.route(ENDPOINT_EP)

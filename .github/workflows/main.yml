@@ -47,7 +47,12 @@ jobs:
       - name: Run Python tests.
         run: make all_tests
 
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
       - name: Deploy to PythonAnywhere
-        run: ./deploy.sh
+        run: |
+          chmod +x deploy.sh
+          ./deploy.sh
         env:
           DEMO_PA_PWD: ${{secrets.DEMO_PA_PWD}}

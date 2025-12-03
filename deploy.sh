@@ -19,8 +19,9 @@ echo "PA user = $PA_USER"
 echo "PA password = $DEMO_PA_PWD"
 
 echo "SSHing to PythonAnywhere."
-# With -T, no indentation, quoted heredoc
-sshpass -p "$DEMO_PA_PWD" ssh -T -o "StrictHostKeyChecking no" "$PA_USER@ssh.pythonanywhere.com" << 'EOF'
-cd ~/Gitjits
-./rebuild.sh
-EOF
+echo "Installing sshpass check: $(which sshpass)"
+
+# Run deploy command
+sshpass -p "$DEMO_PA_PWD" ssh -T -o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" "$PA_USER@ssh.pythonanywhere.com" "cd ~/Gitjits && git pull origin master && source ~/.virtualenvs/Gitjits/bin/activate && pip install -r requirements.txt && pa_reload_webapp.py Gitjits.pythonanywhere.com"
+
+echo "Deploy complete!"

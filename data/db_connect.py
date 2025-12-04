@@ -115,6 +115,20 @@ def read_one(collection, filt, db=GEO_DB):
     for doc in client[db][collection].find(filt):
         convert_mongo_id(doc)
         return doc
+    
+@needs_db
+def read_many(collection: str, filt: dict, db=GEO_DB, no_id=True) -> list:
+    """
+    Returns all documents matching a filter.
+    """
+    results = []
+    for doc in client[db][collection].find(filt):
+        if no_id:
+            doc.pop(MONGO_ID, None)
+        else:
+            convert_mongo_id(doc)
+        results.append(doc)
+    return results    
 
 @needs_db
 def delete(collection: str, filt: dict, db=GEO_DB):

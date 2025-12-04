@@ -90,6 +90,12 @@ def convert_mongo_id(doc: dict):
     if MONGO_ID in doc:
         # Convert mongo ID to a string so it works as JSON
         doc[MONGO_ID] = str(doc[MONGO_ID])
+        
+def close_db():
+    global client
+    if client:
+        client.close()
+        client = None
 
 @needs_db
 def create(collection, doc, db=GEO_DB):

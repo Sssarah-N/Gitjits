@@ -161,6 +161,9 @@ def code_exists(code: str) -> bool:
     except KeyError:
         return False
 
+def search(filt: dict) -> list:
+    """General-purpose search on country fields."""
+    return dbc.read_many(COUNTRY_COLLECTION, filt)
 
 def main():
     print(read())

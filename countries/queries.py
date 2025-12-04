@@ -165,6 +165,17 @@ def search(filt: dict) -> list:
     """General-purpose search on country fields."""
     return dbc.read_many(COUNTRY_COLLECTION, filt)
 
+
+def load_cache():
+    """Load countries from database into memory cache."""
+    global country_cache
+    country_cache = {}
+    countries = dbc.read(COUNTRY_COLLECTION)
+    for country in countries:
+        if CODE in country:
+            country_cache[country[CODE].upper()] = country
+
+
 def main():
     print(read())
 

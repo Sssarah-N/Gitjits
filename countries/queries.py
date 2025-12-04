@@ -42,7 +42,7 @@ def num_countries() -> int:
     return len(read())
 
 
-def create(flds: dict):
+def create(flds: dict, reload=True):
     """
     Create a new country.
     
@@ -52,6 +52,7 @@ def create(flds: dict):
               - capital: Capital city name
               - population: Country population
               - continent: Continent name
+        reload: If True, reload the cache after creating (default: True)
     
     Returns:
         New country ID as string
@@ -74,6 +75,8 @@ def create(flds: dict):
     new_id = dbc.create(COUNTRY_COLLECTION, flds)
     print(f'{new_id=}')
     dbc.update(COUNTRY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
+    if reload:
+        load_cache()
     return new_id
 
 

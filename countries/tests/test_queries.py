@@ -234,7 +234,19 @@ def test_num_countries():
     qry.delete(country_id)
     assert qry.num_countries() == initial_count
 
+def test_search_by_continent():
+    rec = {
+        qry.NAME: "France",
+        qry.CODE: "FR",
+        qry.CONTINENT: "Europe"
+    }
+    cid = qry.create(rec)
 
+    results = qry.search({qry.CONTINENT: "Europe"})
+    assert any(r[qry.CODE] == "FR" for r in results)
+
+    qry.delete(cid)
+    
 @patch('data.db_connect.read', side_effect=Exception('Connection failed'))
 @patch('data.db_connect.connect_db', return_value=True)
 def test_read_connection_error(mock_connect, mock_read):

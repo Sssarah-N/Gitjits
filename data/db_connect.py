@@ -6,6 +6,7 @@ import os
 from functools import wraps
 import pymongo as pm
 import pymongo.errors
+import certifi
 
 LOCAL = "0"
 CLOUD = "1"
@@ -15,6 +16,22 @@ GEO_DB = 'geo2025DB'
 client = None
 
 MONGO_ID = '_id'
+
+# parameter names of mongo client settings
+SERVER_API_PARAM = 'server_api'
+CONN_TIMEOUT = 'connectTimeoutMS'
+SOCK_TIMEOUT = 'socketTimeoutMS'
+CONNECT = 'connect'
+MAX_POOL_SIZE = 'maxPoolSize'
+
+# Recommended Python Anywhere settings.
+PA_MONGO = os.getenv('PA_MONGO', True)
+PA_SETTINGS = {
+    CONN_TIMEOUT: os.getenv('MONGO_CONN_TIMEOUT', 30000),
+    SOCK_TIMEOUT: os.getenv('MONGO_SOCK_TIMEOUT', None),
+    CONNECT: os.getenv('MONGO_CONNECT', False),
+    MAX_POOL_SIZE: os.getenv('MONGO_MAX_POOL_SIZE', 1),
+}
 
 def needs_db(fn, *args, **kwargs):
     @wraps(fn)
@@ -47,7 +64,10 @@ def connect_db():
                 client = pm.MongoClient(f'mongodb+srv://Gitjits:{password}'
                                         + '@gitjits.zzxtdpz.mongodb.net/'
                                         + '?appName=Gitjits',
-                                        serverSelectionTimeoutMS=5000)
+                                        serverSelectionTimeoutMS=5000,
+                                        tlsCAFile=certifi.where(),
+                                        **PA_SETTINGS
+                                        )
                 # Test the connection
                 client.admin.command('ping')
             except (pymongo.errors.ServerSelectionTimeoutError,

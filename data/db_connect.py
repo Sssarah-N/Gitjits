@@ -5,6 +5,7 @@ We may be required to use a new database at any point.
 import os
 from functools import wraps
 import pymongo as pm
+import pymongo.errors
 
 LOCAL = "0"
 CLOUD = "1"
@@ -42,12 +43,26 @@ def connect_db():
                 raise ValueError('You must set your password '
                                  + 'to use Mongo in the cloud.')
             print('Connecting to Mongo in the cloud.')
-            client = pm.MongoClient(f'mongodb+srv://Gitjits:{password}'
-                                    + '@gitjits.zzxtdpz.mongodb.net/'
-                                    + '?appName=Gitjits')
+            try:
+                client = pm.MongoClient(f'mongodb+srv://Gitjits:{password}'
+                                        + '@gitjits.zzxtdpz.mongodb.net/'
+                                        + '?appName=Gitjits',
+                                        serverSelectionTimeoutMS=5000)
+                # Test the connection
+                client.admin.command('ping')
+            except (pymongo.errors.ServerSelectionTimeoutError,
+                    pymongo.errors.ConfigurationError,
+                    pymongo.errors.OperationFailure) as e:
+                raise ConnectionError(f'Failed to connect to MongoDB: {str(e)}') from e
         else:
             print("Connecting to Mongo locally.")
-            client = pm.MongoClient()
+            try:
+                client = pm.MongoClient(serverSelectionTimeoutMS=5000)
+                # Test the connection
+                client.admin.command('ping')
+            except (pymongo.errors.ServerSelectionTimeoutError,
+                    pymongo.errors.ConfigurationError) as e:
+                raise ConnectionError(f'Failed to connect to local MongoDB: {str(e)}') from e
     return client
 
 

@@ -164,6 +164,20 @@ def test_delete_removes_from_list(temp_city):
 def test_delete_missing():
     with pytest.raises(KeyError):
         qry.delete("nonexistent entry")
+        
+def test_search_by_city():
+    temp_city = {
+        qry.NAME: "Paris",
+        qry.STATE_CODE: "FR"
+    }
+
+    city_id = qry.create(temp_city)
+    
+    results = qry.search({qry.NAME: "Paris"})
+    assert isinstance(results, list)
+    
+    assert any(city.get(qry.ID) == city_id for city in results)
+    qry.delete(city_id)
 
 @patch('data.db_connect.client', None)
 @patch('data.db_connect.connect_db', side_effect=ConnectionError("Cannot connect to database"))

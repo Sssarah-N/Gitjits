@@ -132,6 +132,9 @@ def delete(state_id: str):
 def read() -> list:
     return dbc.read(STATE_COLLECTION)
 
+def search(filt: dict) -> list:
+    """General-purpose search on state fields."""
+    return dbc.read_many(STATE_COLLECTION, filt)
 
 def load_cache():
     global cache

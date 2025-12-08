@@ -14,67 +14,6 @@ def get_temp_rec():
     return deepcopy(qry.SAMPLE_STATE)
 
 
-@pytest.fixture(autouse=True)
-def mock_db_operations():
-    """Mock all database operations to use in-memory storage for fast tests."""
-    global _test_db, _next_id
-    _test_db = {}
-    _next_id = 1
-    
-    def mock_connect():
-        pass
-    
-    def mock_create(collection, doc):
-        new_obj_id = ObjectId()
-        doc_id = str(new_obj_id)
-        _test_db[doc_id] = {**doc, 'id': doc_id}
-        return doc_id
-    
-    def mock_read(collection):
-        return list(_test_db.values())
-    
-    def mock_read_one(collection, query):
-        state_id = query.get('id')
-        return _test_db.get(state_id)
-    
-    def mock_update(collection, query, fields):
-        # Handle both ObjectId queries and id queries
-        if '_id' in query:
-            # This is the initial update to add 'id' field after creation
-            # Extract the id from the fields being set
-            state_id = fields.get('id')
-            if state_id and state_id in _test_db:
-                _test_db[state_id].update(fields)
-                result = MagicMock()
-                result.matched_count = 1
-                return result
-        else:
-            state_id = query.get('id')
-            if state_id in _test_db:
-                _test_db[state_id].update(fields)
-                result = MagicMock()
-                result.matched_count = 1
-                return result
-        result = MagicMock()
-        result.matched_count = 0
-        return result
-    
-    def mock_delete(collection, query):
-        state_id = query.get('id')
-        if state_id in _test_db:
-            del _test_db[state_id]
-            return 1
-        return 0
-    
-    with patch('data.db_connect.connect_db', mock_connect), \
-         patch('data.db_connect.create', mock_create), \
-         patch('data.db_connect.read', mock_read), \
-         patch('data.db_connect.read_one', mock_read_one), \
-         patch('data.db_connect.update', mock_update), \
-         patch('data.db_connect.delete', mock_delete):
-        yield
-
-
 @pytest.fixture(scope='function')
 def temp_state():
     temp_rec = get_temp_rec()
@@ -232,3 +171,25 @@ def test_delete_removes_from_list(temp_state):
 def test_delete_missing():
     with pytest.raises(KeyError):
         qry.delete("nonexistent entry")
+
+def test_search_by_state_id():
+    temp_state = {
+        qry.NAME: "Test State",
+        qry.STATE_CODE: "TS",
+        qry.COUNTRY_CODE: "US",
+        qry.CAPITAL: "Test City",
+        qry.POPULATION: 500000
+    }
+
+    sid = qry.create(temp_state)
+    results = qry.search({qry.STATE_CODE: "TS"})
+    assert isinstance(results, list)
+    assert any(r.get(qry.ID) == sid for r in results)
+    qry.delete(sid)
+    
+    
+@patch('data.db_connect.read', side_effect=Exception('Connection failed'))
+@patch('data.db_connect.connect_db', return_value=True)
+def test_read_connection_error(mock_connect, mock_read):
+    with pytest.raises(Exception):
+        countries = qry.read()

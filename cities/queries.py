@@ -105,7 +105,8 @@ def create(flds: dict):
         New city ID as string
         
     Raises:
-        ValueError: If validation fails (bad type, missing name, or invalid state_code format)
+        ValueError: If validation fails (bad type, missing name, invalid state_code format,
+                    or city with same name and state_code already exists)
         
     Examples:
         >>> create({'name': 'New York', 'state_code': 'NY'})      # US
@@ -119,6 +120,17 @@ def create(flds: dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
+    
+    # Check if city with same name and state_code already exists
+    if STATE_CODE in flds and flds[STATE_CODE]:
+        existing_cities = get_by_state_code(flds[STATE_CODE])
+        city_name = flds[NAME].strip()
+        for existing_city in existing_cities:
+            if existing_city.get(NAME, '').strip().upper() == city_name.upper():
+                raise ValueError(
+                    f'City with name "{city_name}" and state_code "{flds[STATE_CODE]}" already exists'
+                )
+    
     new_id = dbc.create(CITY_COLLECTION, flds)
     print(f'{new_id=}')
     dbc.update(CITY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})

@@ -14,9 +14,19 @@ def get_temp_rec():
     return deepcopy(qry.SAMPLE_STATE)
 
 
+def cleanup_state(state_code: str, country_code: str = 'US'):
+    """Helper to delete a state by code if it exists (for test cleanup)."""
+    try:
+        qry.delete_by_code(state_code, country_code)
+    except Exception:
+        pass  # Ignore errors if state doesn't exist
+
+
 @pytest.fixture(scope='function')
 def temp_state():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     new_rec_id = qry.create(temp_rec)
     yield new_rec_id
     try:
@@ -34,9 +44,13 @@ def test_valid_id_min_length():
 def test_good_create():
     old_count = qry.num_states()
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     new_rec_id = qry.create(temp_rec)
     assert qry.is_valid_id(new_rec_id)
     assert qry.num_states() > old_count
+    # Clean up
+    qry.delete(new_rec_id)
 
 
 def test_create_no_name():
@@ -57,13 +71,19 @@ def test_create_bad_param_type():
 def test_create_preserves_extra_fields():
     state = get_temp_rec()
     state.update({"area": 54555})
+    # Clean up any existing state with same code before creating
+    cleanup_state(state.get(qry.STATE_CODE), state.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(state)
     stored = qry.get(state_id)
     assert stored["area"] == 54555
+    # Clean up
+    qry.delete(state_id)
 
 
 def test_update():
-    temp_rec = get_temp_rec()  
+    temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.STATE_CODE: temp_rec[qry.STATE_CODE]}
     result_id = qry.update(state_id, update_data)
@@ -72,9 +92,13 @@ def test_update():
     assert result_id == state_id
     updated_state = qry.get(state_id)
     assert updated_state[qry.NAME] == temp_rec[qry.NAME] + " Updated"
+    # Clean up
+    qry.delete(state_id)
 
 def test_update_population():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     new_population = 12345678
     update_data = {qry.POPULATION: new_population}
@@ -82,14 +106,20 @@ def test_update_population():
     assert result_id == state_id
     updated_state = qry.get(state_id)
     assert updated_state[qry.POPULATION] == new_population
+    # Clean up
+    qry.delete(state_id)
     
 
 def test_update_population_bad_type():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     update_data = {qry.POPULATION: "a lot"}
     with pytest.raises(ValueError):
         qry.update(state_id, update_data)
+    # Clean up
+    qry.delete(state_id)
 
     
 def test_update_bad_id():
@@ -103,17 +133,26 @@ def test_update_missing_id():
 
 
 def test_update_bad_fields_param_type():
-    state_id = qry.create(get_temp_rec())
+    temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
+    state_id = qry.create(temp_rec)
     with pytest.raises(ValueError):
         qry.update(state_id, 123)
+    # Clean up
+    qry.delete(state_id)
         
      
 def test_get():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     state = qry.get(state_id)
     assert state[qry.NAME] == temp_rec[qry.NAME]
     assert state[qry.STATE_CODE] == temp_rec[qry.STATE_CODE]
+    # Clean up
+    qry.delete(state_id)
 
 
 def test_get_bad_id():
@@ -128,6 +167,8 @@ def test_get_missing_id():
 
 def test_delete():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     qry.delete(state_id)
     # Verify state is deleted by trying to get it
@@ -141,9 +182,11 @@ def test_delete_bad_id():
 
 
 def test_delete_missing_id():
+    # Use a unique state code to avoid conflicts
+    state_id = qry.create({qry.NAME: "TestState", qry.STATE_CODE: "TS", qry.COUNTRY_CODE: "US"})
+    qry.delete(state_id)  # Delete it first
     with pytest.raises(KeyError):
-        qry.create({qry.NAME: "California", qry.STATE_CODE: "CA", qry.COUNTRY_CODE: "US"})
-        qry.delete("CA")
+        qry.delete(state_id)  # Try to delete again
 
 
 def test_read_returns_list():

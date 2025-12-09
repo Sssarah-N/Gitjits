@@ -13,6 +13,7 @@ import pytest
 
 import server.endpoints as ep
 import cities.queries as cqry
+import states.queries as sqry
 
 TEST_CLIENT = ep.app.test_client()
 
@@ -351,6 +352,8 @@ def test_states_get():
 
 def test_states_post():
     """Test creating a state."""
+    # Clean up any existing state with same code before creating
+    sqry.delete_by_code("CA", "US")
     resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
                            json={"name": "California",
                                  "state_code": "CA",
@@ -360,10 +363,15 @@ def test_states_post():
     resp_json = resp.get_json()
     assert ep.STATES_RESP in resp_json
     assert "state_id" in resp_json[ep.STATES_RESP]
+    # Clean up
+    state_id = resp_json[ep.STATES_RESP]["state_id"]
+    TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
 
 
 def test_state_get_valid():
     """Test getting a single state by ID."""
+    # Clean up any existing state with same code before creating
+    sqry.delete_by_code("IL", "US")
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
@@ -386,6 +394,8 @@ def test_state_get_valid():
 
 def test_state_put_valid():
     """Test updating a state with valid data."""
+    # Clean up any existing state with same code before creating
+    sqry.delete_by_code("IL", "US")
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
@@ -415,6 +425,8 @@ def test_state_put_valid():
     assert data["capital"] == "Chicago"
     assert data["population"] == 13000000
     assert str(data["state_id"]) == str(state_id)
+    # Clean up
+    TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
 
 
 def test_state_get_not_found():

@@ -4,6 +4,8 @@ This file deals with our state-level data.
 from bson import ObjectId
 import data.db_connect as dbc
 
+MONGO_ID = '_id'
+
 MIN_ID_LEN = 1
 
 STATE_COLLECTION = 'states'
@@ -49,7 +51,8 @@ def create(flds: dict, reload=True):
     Create a new state.
     
     Raises:
-        ValueError: If validation fails (bad type, missing name, invalid fields)
+        ValueError: If validation fails (bad type, missing name, invalid fields,
+                    or state with same state_code and country_code already exists)
     """
     dbc.connect_db()
     print(f'{flds=}')
@@ -65,6 +68,22 @@ def create(flds: dict, reload=True):
         lon = flds[LONGITUDE]
         if not isinstance(lon, (int, float)) or not (-180 <= lon <= 180):
             raise ValueError(f'Longitude must be a number between -180 and 180, got {lon}')
+    
+    # Check if state with same state_code and country_code already exists
+    if STATE_CODE in flds and flds[STATE_CODE]:
+        country_code = flds.get(COUNTRY_CODE, 'US')  # Default to 'US' if not provided
+        # Read all states and check case-insensitively
+        all_states = read()
+        state_code_upper = flds[STATE_CODE].upper()
+        country_code_upper = country_code.upper()
+        for existing_state in all_states:
+            existing_state_code = existing_state.get(STATE_CODE, '').upper()
+            existing_country_code = existing_state.get(COUNTRY_CODE, 'US').upper()
+            if existing_state_code == state_code_upper and existing_country_code == country_code_upper:
+                raise ValueError(
+                    f'State with state_code "{flds[STATE_CODE]}" and country_code "{country_code}" already exists'
+                )
+    
     new_id = dbc.create(STATE_COLLECTION, flds)
     if reload:
         load_cache()
@@ -127,6 +146,39 @@ def delete(state_id: str):
     if ret < 1:
         raise KeyError(f'State not found: {state_id}')
     return ret
+
+
+def delete_by_code(state_code: str, country_code: str = 'US'):
+    """
+    Delete a state by state_code and country_code if it exists.
+    Useful for test cleanup.
+    
+    Args:
+        state_code: State code to delete
+        country_code: Country code (default: 'US')
+    
+    Returns:
+        True if deleted, False if not found
+    """
+    try:
+        dbc.connect_db()
+        from data.db_connect import client, GEO_DB
+        from bson.regex import Regex
+        
+        # Use regex for case-insensitive matching
+        filter_query = {
+            STATE_CODE: Regex(f'^{state_code}$', 'i'),
+            COUNTRY_CODE: Regex(f'^{country_code}$', 'i')
+        }
+        
+        # Delete all matching documents
+        result = client[GEO_DB][STATE_COLLECTION].delete_many(filter_query)
+        return result.deleted_count > 0
+    except Exception as e:
+        print(f'Error in delete_by_code: {e}')
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def read() -> list:

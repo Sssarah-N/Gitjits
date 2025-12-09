@@ -264,12 +264,7 @@ class CitiesByState(Resource):
         Example: /cities/by-state/NY returns all cities in New York
         """
         try:
-            all_cities = cqry.read()
-            # Filter cities by state_code (case-insensitive)
-            filtered = [
-                city for city in all_cities
-                if city.get('state_code', '').upper() == state_code.upper()
-            ]
+            filtered = cqry.get_by_state_code(state_code)
             return {CITIES_RESP: filtered}
         except ConnectionError as err:
             return {ERROR: str(err)}, 503

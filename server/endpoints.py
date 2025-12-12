@@ -21,12 +21,10 @@ api = Api(app)
 cities_ns = Namespace('cities', description='Cities operations')
 states_ns = Namespace('states', description='States operations')
 countries_ns = Namespace('countries', description='Countries operations')
-utils_ns = Namespace('utils', description='Utility operations')
 
-api.add_namespace(cities_ns)
-api.add_namespace(states_ns)
-api.add_namespace(countries_ns)
-api.add_namespace(utils_ns)
+api.add_namespace(cities_ns, path='/cities')
+api.add_namespace(states_ns, path='/states')
+api.add_namespace(countries_ns, path='/countries')
 
 # Define the city model for Swagger documentation
 city_model = api.model('City', {
@@ -83,15 +81,21 @@ message_model = api.model('Message', {
 
 # Define cities model for Swagger documentation
 cities_model = api.model('Cities', {
-    'Cities': fields.List(fields.Nested(city_model), required=True, description='List of cities',
-                          example=[{'city_id': '693b8bd5159f4d68e5f79447'}]
+    'Cities': fields.List(
+        fields.Nested(city_model),
+        required=True,
+        description='List of cities',
+        example=[{'city_id': '693b8bd5159f4d68e5f79447'}],
     )
 })
 
 # Define states model for Swagger documentation
 states_model = api.model('States', {
-    'States': fields.List(fields.Nested(state_model), required=True, description='List of states',
-                          example=[{'state_id': '693b8bd5159f4d68e5f79447'}]
+    'States': fields.List(
+        fields.Nested(state_model),
+        required=True,
+        description='List of states with their IDs',
+        example=[{'state_id': '693b8bd5159f4d68e5f79447'}],
     )
 })
 
@@ -136,7 +140,7 @@ DELETE_ALL_EP = '/delete-all-data'
 DELETE_ALL_RESP = 'Deleted'
 
 
-@cities_ns.route(f'{CITIES_EPS}')
+@cities_ns.route('')
 class Cities(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
@@ -176,7 +180,7 @@ class Cities(Resource):
         return {CITIES_RESP: {"city_id": city_id}}
 
 
-@cities_ns.route(CITY_EP)
+@cities_ns.route('/<city_id>')
 class City(Resource):
     """
     This class handles operations on individual cities.
@@ -198,7 +202,10 @@ class City(Resource):
         return {CITY_RESP: city}
 
     @api.expect(city_model)
-    @api.doc(params={'city_id': CITY_ID_DOC, 'payload': 'City fields to update'})
+    @api.doc(params={
+        'city_id': CITY_ID_DOC,
+        'payload': 'Updated city fields'
+    })
     @api.response(200, 'Success', city_model)
     @api.response(400, 'Bad Request', error_model)
     @api.response(404, 'Not Found', error_model)
@@ -234,7 +241,7 @@ class City(Resource):
         return {MESSAGE: f"City {city_id} deleted successfully"}
 
 
-@states_ns.route(f'{STATES_EPS}')
+@states_ns.route('')
 class States(Resource):
     """
     This class handles operations on the states collection.
@@ -273,7 +280,7 @@ class States(Resource):
         return {STATES_RESP: {"state_id": state_id}}
 
 
-@states_ns.route(STATE_EP)
+@states_ns.route('/<state_id>')
 class State(Resource):
     """
     This class handles operations on individual states.
@@ -295,7 +302,10 @@ class State(Resource):
         return {STATE_RESP: state}
 
     @api.expect(state_model)
-    @api.doc(params={'state_id': STATE_ID_DOC, 'payload': 'State fields to update'})
+    @api.doc(params={
+        'state_id': STATE_ID_DOC,
+        'payload': 'Updated state fields'
+    })
     @api.response(200, 'Success', state_model)
     @api.response(400, 'Bad Request', error_model)
     @api.response(404, 'Not Found', error_model)
@@ -331,7 +341,7 @@ class State(Resource):
         return {MESSAGE: f"State {state_id} deleted successfully"}
 
 
-@cities_ns.route(CITIES_BY_STATE_EP)
+@cities_ns.route('/by-state/<state_code>')
 class CitiesByState(Resource):
     """
     Get all cities by state code.
@@ -352,7 +362,7 @@ class CitiesByState(Resource):
             return {ERROR: str(err)}, 503
 
 
-@utils_ns.route(STATISTICS_EP)
+@api.route(STATISTICS_EP)
 class Statistics(Resource):
     """
     Get comprehensive database statistics.
@@ -396,7 +406,7 @@ class Statistics(Resource):
             return {ERROR: f'Error getting statistics: {str(err)}'}, 500
 
 
-@utils_ns.route(HELLO_EP)
+@api.route(HELLO_EP)
 class HelloWorld(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
@@ -409,7 +419,7 @@ class HelloWorld(Resource):
         return {HELLO_RESP: 'world'}
 
 
-@countries_ns.route(f'{COUNTRIES_EPS}')
+@countries_ns.route('')
 class Countries(Resource):
     """
     This class handles operations on the countries collection.
@@ -447,7 +457,7 @@ class Countries(Resource):
         return {COUNTRIES_RESP: {"country_id": country_id}}
 
 
-@countries_ns.route(COUNTRY_EP)
+@countries_ns.route('/<country_id>')
 class Country(Resource):
     """
     This class handles operations on individual countries.
@@ -506,7 +516,7 @@ class Country(Resource):
         return {MESSAGE: f"Country {country_id} deleted successfully"}
 
 
-@utils_ns.route(DELETE_ALL_EP)
+@api.route(DELETE_ALL_EP)
 class DeleteAllData(Resource):
     """
     Delete all test data from the database.
@@ -566,7 +576,7 @@ class DeleteAllData(Resource):
             return {ERROR: f'Error deleting data: {str(err)}'}, 500
 
 
-@utils_ns.route(ENDPOINT_EP)
+@api.route(ENDPOINT_EP)
 class Endpoints(Resource):
     """
     This class will serve as live, fetchable documentation of what endpoints

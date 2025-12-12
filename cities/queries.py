@@ -188,6 +188,26 @@ def get_cities_by_state(state_code: str) -> list:
     return dbc.read_many(CITY_COLLECTION, {STATE_CODE: state_code})
 
 
+def get_by_state_code(state_code: str) -> list:
+    """
+    Get all cities in a state/province/region by state code (case-insensitive).
+    Alias for get_cities_by_state for backwards compatibility.
+    
+    Args:
+        state_code: State/province/region code (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
+    
+    Returns:
+        List of city dictionaries matching the state code
+    """
+    if not isinstance(state_code, str):
+        raise ValueError(f'State code must be a string, got {type(state_code).__name__}')
+    all_cities = dbc.read(CITY_COLLECTION)
+    return [
+        city for city in all_cities
+        if city.get(STATE_CODE, '').upper() == state_code.upper()
+    ]
+
+
 def search(filt: dict) -> list:
     """General-purpose search on city fields."""
     return dbc.read_many(CITY_COLLECTION, filt)

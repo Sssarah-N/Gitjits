@@ -14,70 +14,19 @@ def get_temp_rec():
     return deepcopy(qry.SAMPLE_STATE)
 
 
-@pytest.fixture(autouse=True)
-def mock_db_operations():
-    """Mock all database operations to use in-memory storage for fast tests."""
-    global _test_db, _next_id
-    _test_db = {}
-    _next_id = 1
-    
-    def mock_connect():
-        pass
-    
-    def mock_create(collection, doc):
-        new_obj_id = ObjectId()
-        doc_id = str(new_obj_id)
-        _test_db[doc_id] = {**doc, 'id': doc_id}
-        return doc_id
-    
-    def mock_read(collection):
-        return list(_test_db.values())
-    
-    def mock_read_one(collection, query):
-        state_id = query.get('id')
-        return _test_db.get(state_id)
-    
-    def mock_update(collection, query, fields):
-        # Handle both ObjectId queries and id queries
-        if '_id' in query:
-            # This is the initial update to add 'id' field after creation
-            # Extract the id from the fields being set
-            state_id = fields.get('id')
-            if state_id and state_id in _test_db:
-                _test_db[state_id].update(fields)
-                result = MagicMock()
-                result.matched_count = 1
-                return result
-        else:
-            state_id = query.get('id')
-            if state_id in _test_db:
-                _test_db[state_id].update(fields)
-                result = MagicMock()
-                result.matched_count = 1
-                return result
-        result = MagicMock()
-        result.matched_count = 0
-        return result
-    
-    def mock_delete(collection, query):
-        state_id = query.get('id')
-        if state_id in _test_db:
-            del _test_db[state_id]
-            return 1
-        return 0
-    
-    with patch('data.db_connect.connect_db', mock_connect), \
-         patch('data.db_connect.create', mock_create), \
-         patch('data.db_connect.read', mock_read), \
-         patch('data.db_connect.read_one', mock_read_one), \
-         patch('data.db_connect.update', mock_update), \
-         patch('data.db_connect.delete', mock_delete):
-        yield
+def cleanup_state(state_code: str, country_code: str = 'US'):
+    """Helper to delete a state by code if it exists (for test cleanup)."""
+    try:
+        qry.delete_by_code(state_code, country_code)
+    except Exception:
+        pass  # Ignore errors if state doesn't exist
 
 
 @pytest.fixture(scope='function')
 def temp_state():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     new_rec_id = qry.create(temp_rec)
     yield new_rec_id
     try:
@@ -95,9 +44,13 @@ def test_valid_id_min_length():
 def test_good_create():
     old_count = qry.num_states()
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     new_rec_id = qry.create(temp_rec)
     assert qry.is_valid_id(new_rec_id)
     assert qry.num_states() > old_count
+    # Clean up
+    qry.delete(new_rec_id)
 
 
 def test_create_no_name():
@@ -118,13 +71,19 @@ def test_create_bad_param_type():
 def test_create_preserves_extra_fields():
     state = get_temp_rec()
     state.update({"area": 54555})
+    # Clean up any existing state with same code before creating
+    cleanup_state(state.get(qry.STATE_CODE), state.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(state)
     stored = qry.get(state_id)
     assert stored["area"] == 54555
+    # Clean up
+    qry.delete(state_id)
 
 
 def test_update():
-    temp_rec = get_temp_rec()  
+    temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     update_data = {qry.NAME: temp_rec[qry.NAME] + " Updated", qry.STATE_CODE: temp_rec[qry.STATE_CODE]}
     result_id = qry.update(state_id, update_data)
@@ -133,9 +92,13 @@ def test_update():
     assert result_id == state_id
     updated_state = qry.get(state_id)
     assert updated_state[qry.NAME] == temp_rec[qry.NAME] + " Updated"
+    # Clean up
+    qry.delete(state_id)
 
 def test_update_population():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     new_population = 12345678
     update_data = {qry.POPULATION: new_population}
@@ -143,14 +106,20 @@ def test_update_population():
     assert result_id == state_id
     updated_state = qry.get(state_id)
     assert updated_state[qry.POPULATION] == new_population
+    # Clean up
+    qry.delete(state_id)
     
 
 def test_update_population_bad_type():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     update_data = {qry.POPULATION: "a lot"}
     with pytest.raises(ValueError):
         qry.update(state_id, update_data)
+    # Clean up
+    qry.delete(state_id)
 
     
 def test_update_bad_id():
@@ -164,17 +133,26 @@ def test_update_missing_id():
 
 
 def test_update_bad_fields_param_type():
-    state_id = qry.create(get_temp_rec())
+    temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
+    state_id = qry.create(temp_rec)
     with pytest.raises(ValueError):
         qry.update(state_id, 123)
+    # Clean up
+    qry.delete(state_id)
         
      
 def test_get():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     state = qry.get(state_id)
     assert state[qry.NAME] == temp_rec[qry.NAME]
     assert state[qry.STATE_CODE] == temp_rec[qry.STATE_CODE]
+    # Clean up
+    qry.delete(state_id)
 
 
 def test_get_bad_id():
@@ -189,6 +167,8 @@ def test_get_missing_id():
 
 def test_delete():
     temp_rec = get_temp_rec()
+    # Clean up any existing state with same code before creating
+    cleanup_state(temp_rec.get(qry.STATE_CODE), temp_rec.get(qry.COUNTRY_CODE, 'US'))
     state_id = qry.create(temp_rec)
     qry.delete(state_id)
     # Verify state is deleted by trying to get it
@@ -202,9 +182,11 @@ def test_delete_bad_id():
 
 
 def test_delete_missing_id():
+    # Use a unique state code to avoid conflicts
+    state_id = qry.create({qry.NAME: "TestState", qry.STATE_CODE: "TS", qry.COUNTRY_CODE: "US"})
+    qry.delete(state_id)  # Delete it first
     with pytest.raises(KeyError):
-        qry.create({qry.NAME: "California", qry.STATE_CODE: "CA", qry.COUNTRY_CODE: "US"})
-        qry.delete("CA")
+        qry.delete(state_id)  # Try to delete again
 
 
 def test_read_returns_list():
@@ -232,3 +214,25 @@ def test_delete_removes_from_list(temp_state):
 def test_delete_missing():
     with pytest.raises(KeyError):
         qry.delete("nonexistent entry")
+
+def test_search_by_state_id():
+    temp_state = {
+        qry.NAME: "Test State",
+        qry.STATE_CODE: "TS",
+        qry.COUNTRY_CODE: "US",
+        qry.CAPITAL: "Test City",
+        qry.POPULATION: 500000
+    }
+
+    sid = qry.create(temp_state)
+    results = qry.search({qry.STATE_CODE: "TS"})
+    assert isinstance(results, list)
+    assert any(r.get(qry.ID) == sid for r in results)
+    qry.delete(sid)
+    
+    
+@patch('data.db_connect.read', side_effect=Exception('Connection failed'))
+@patch('data.db_connect.connect_db', return_value=True)
+def test_read_connection_error(mock_connect, mock_read):
+    with pytest.raises(Exception):
+        countries = qry.read()

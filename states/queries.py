@@ -4,6 +4,8 @@ This file deals with our state-level data.
 from bson import ObjectId
 import data.db_connect as dbc
 
+MONGO_ID = '_id'
+
 MIN_ID_LEN = 1
 
 STATE_COLLECTION = 'states'
@@ -49,7 +51,8 @@ def create(flds: dict, reload=True):
     Create a new state.
     
     Raises:
-        ValueError: If validation fails (bad type, missing name, invalid fields)
+        ValueError: If validation fails (bad type, missing name, invalid fields,
+                    country doesn't exist, or duplicate state_code+country_code)
     """
     dbc.connect_db()
     print(f'{flds=}')
@@ -143,9 +146,45 @@ def delete(state_id: str):
     return ret
 
 
+def delete_by_code(state_code: str, country_code: str = 'US'):
+    """
+    Delete a state by state_code and country_code if it exists.
+    Useful for test cleanup.
+    
+    Args:
+        state_code: State code to delete
+        country_code: Country code (default: 'US')
+    
+    Returns:
+        True if deleted, False if not found
+    """
+    try:
+        dbc.connect_db()
+        from data.db_connect import client, GEO_DB
+        from bson.regex import Regex
+        
+        # Use regex for case-insensitive matching
+        filter_query = {
+            STATE_CODE: Regex(f'^{state_code}$', 'i'),
+            COUNTRY_CODE: Regex(f'^{country_code}$', 'i')
+        }
+        
+        # Delete all matching documents
+        result = client[GEO_DB][STATE_COLLECTION].delete_many(filter_query)
+        return result.deleted_count > 0
+    except Exception as e:
+        print(f'Error in delete_by_code: {e}')
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def read() -> list:
     return dbc.read(STATE_COLLECTION)
 
+def search(filt: dict) -> list:
+    """General-purpose search on state fields."""
+    return dbc.read_many(STATE_COLLECTION, filt)
 
 def load_cache():
     global cache
@@ -213,4 +252,3 @@ def get_states_by_country(country_code: str) -> list:
 def main():
     create(SAMPLE_STATE)
     print(read())
-

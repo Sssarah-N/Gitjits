@@ -5,7 +5,7 @@ The endpoint called `endpoints` will return all available endpoints.
 # from http import HTTPStatus
 
 from flask import Flask, request  # , request
-from flask_restx import Resource, Api, fields  # Namespace
+from flask_restx import Resource, Api, fields, Namespace  # Namespace
 from flask_cors import CORS
 
 # import werkzeug.exceptions as wz
@@ -16,6 +16,15 @@ import countries.queries as coqry
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+
+# Swagger docs namespaces
+cities_ns = Namespace('cities', description='Cities operations')
+states_ns = Namespace('states', description='States operations')
+countries_ns = Namespace('countries', description='Countries operations')
+
+api.add_namespace(cities_ns, path='/cities')
+api.add_namespace(states_ns, path='/states')
+api.add_namespace(countries_ns, path='/countries')
 
 # Define the city model for Swagger documentation
 city_model = api.model('City', {
@@ -58,6 +67,41 @@ country_model = api.model('Country', {
                                example='North America')
 })
 
+# Define error message model for Swagger documentation
+error_model = api.model('Error', {
+    'message': fields.String(required=True, description='Error message',
+                             example='Error message here')
+})
+
+# Define message model for Swagger documentation
+message_model = api.model('Message', {
+    'message': fields.String(required=True, description='Message',
+                             example='Message here')
+})
+
+# Define cities model for Swagger documentation
+cities_model = api.model('Cities', {
+    'Cities': fields.List(
+        fields.Nested(city_model),
+        required=True,
+        description='List of cities',
+        example=[{'city_id': '693b8bd5159f4d68e5f79447'}],
+    )
+})
+
+# Define states model for Swagger documentation
+states_model = api.model('States', {
+    'States': fields.List(
+        fields.Nested(state_model),
+        required=True,
+        description='List of states with their IDs',
+        example=[{'state_id': '693b8bd5159f4d68e5f79447'}],
+    )
+})
+
+CITY_ID_DOC = 'ID of the city (MongoDB ObjectId)'
+STATE_ID_DOC = 'ID of the state (MongoDB ObjectId)'
+
 MESSAGE = 'Message'
 ERROR = "Error"
 READ = 'read'
@@ -96,12 +140,16 @@ DELETE_ALL_EP = '/delete-all-data'
 DELETE_ALL_RESP = 'Deleted'
 
 
-@api.route(f'{CITIES_EPS}')
+@cities_ns.route('')
 class Cities(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
     app is working at all.
     """
+    @api.doc(description='Get all cities')
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self):
         """
         A trivial endpoint to see if the server is running.
@@ -113,6 +161,9 @@ class Cities(Resource):
         return {CITIES_RESP: cities}
 
     @api.expect(city_model)
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def post(self):
         """
         Create a new city
@@ -129,11 +180,15 @@ class Cities(Resource):
         return {CITIES_RESP: {"city_id": city_id}}
 
 
-@api.route(CITY_EP)
+@cities_ns.route('/<city_id>')
 class City(Resource):
     """
     This class handles operations on individual cities.
     """
+    @api.doc(params={'city_id': CITY_ID_DOC})
+    @api.response(200, 'Success', city_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def get(self, city_id):
         """
         Get a single city by ID.
@@ -147,6 +202,13 @@ class City(Resource):
         return {CITY_RESP: city}
 
     @api.expect(city_model)
+    @api.doc(params={
+        'city_id': CITY_ID_DOC,
+        'payload': 'Updated city fields'
+    })
+    @api.response(200, 'Success', city_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def put(self, city_id):
         """
         Update a city by ID.
@@ -162,6 +224,10 @@ class City(Resource):
             return {ERROR: str(err)}, 404
         return {CITY_RESP: updated_city}, 200
 
+    @api.doc(params={'city_id': CITY_ID_DOC})
+    @api.response(200, 'Success', message_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def delete(self, city_id):
         """
         Delete a city by ID.
@@ -175,11 +241,15 @@ class City(Resource):
         return {MESSAGE: f"City {city_id} deleted successfully"}
 
 
-@api.route(f'{STATES_EPS}')
+@states_ns.route('')
 class States(Resource):
     """
     This class handles operations on the states collection.
     """
+    @api.doc(description='Get all states')
+    @api.response(200, 'Success', states_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self):
         """
         Get all states.
@@ -191,6 +261,9 @@ class States(Resource):
         return {STATES_RESP: states}
 
     @api.expect(state_model)
+    @api.response(200, 'Success', states_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def post(self):
         """
         Create a new state
@@ -207,11 +280,15 @@ class States(Resource):
         return {STATES_RESP: {"state_id": state_id}}
 
 
-@api.route(STATE_EP)
+@states_ns.route('/<state_id>')
 class State(Resource):
     """
     This class handles operations on individual states.
     """
+    @api.doc(params={'state_id': STATE_ID_DOC})
+    @api.response(200, 'Success', state_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def get(self, state_id):
         """
         Get a single state by ID.
@@ -225,6 +302,13 @@ class State(Resource):
         return {STATE_RESP: state}
 
     @api.expect(state_model)
+    @api.doc(params={
+        'state_id': STATE_ID_DOC,
+        'payload': 'Updated state fields'
+    })
+    @api.response(200, 'Success', state_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def put(self, state_id):
         """
         Update a state by ID.
@@ -240,6 +324,10 @@ class State(Resource):
             return {ERROR: str(err)}, 404
         return {STATE_RESP: updated_state}, 200
 
+    @api.doc(params={'state_id': STATE_ID_DOC})
+    @api.response(200, 'Success', message_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def delete(self, state_id):
         """
         Delete a state by ID.
@@ -253,23 +341,22 @@ class State(Resource):
         return {MESSAGE: f"State {state_id} deleted successfully"}
 
 
-@api.route(CITIES_BY_STATE_EP)
+@cities_ns.route('/by-state/<state_code>')
 class CitiesByState(Resource):
     """
     Get all cities by state code.
     """
+    @api.doc(description='Get all cities by state code')
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self, state_code):
         """
         Get all cities in a given state by state code.
         Example: /cities/by-state/NY returns all cities in New York
         """
         try:
-            all_cities = cqry.read()
-            # Filter cities by state_code (case-insensitive)
-            filtered = [
-                city for city in all_cities
-                if city.get('state_code', '').upper() == state_code.upper()
-            ]
+            filtered = cqry.get_by_state_code(state_code)
             return {CITIES_RESP: filtered}
         except ConnectionError as err:
             return {ERROR: str(err)}, 503
@@ -332,7 +419,7 @@ class HelloWorld(Resource):
         return {HELLO_RESP: 'world'}
 
 
-@api.route(f'{COUNTRIES_EPS}')
+@countries_ns.route('')
 class Countries(Resource):
     """
     This class handles operations on the countries collection.
@@ -370,7 +457,7 @@ class Countries(Resource):
         return {COUNTRIES_RESP: {"country_id": country_id}}
 
 
-@api.route(COUNTRY_EP)
+@countries_ns.route('/<country_id>')
 class Country(Resource):
     """
     This class handles operations on individual countries.

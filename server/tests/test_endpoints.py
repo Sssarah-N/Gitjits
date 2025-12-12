@@ -13,6 +13,7 @@ import pytest
 
 import server.endpoints as ep
 import cities.queries as cqry
+import states.queries as sqry
 
 TEST_CLIENT = ep.app.test_client()
 

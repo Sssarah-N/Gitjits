@@ -188,5 +188,9 @@ def get_cities_by_state(state_code: str) -> list:
     return dbc.read_many(CITY_COLLECTION, {STATE_CODE: state_code})
 
 
+def search(filt: dict) -> list:
+    """General-purpose search on city fields."""
+    return dbc.read_many(CITY_COLLECTION, filt)
+
 def main():
     print(read())

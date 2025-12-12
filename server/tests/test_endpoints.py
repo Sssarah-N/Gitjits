@@ -351,6 +351,11 @@ def test_states_get():
 
 def test_states_post():
     """Test creating a state."""
+    # First create the country
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                                    json={"name": "United States", "code": "US"})
+    country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+
     resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
                            json={"name": "California",
                                  "state_code": "CA",
@@ -361,9 +366,19 @@ def test_states_post():
     assert ep.STATES_RESP in resp_json
     assert "state_id" in resp_json[ep.STATES_RESP]
 
+    # Cleanup
+    state_id = resp_json[ep.STATES_RESP]["state_id"]
+    TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
+
 
 def test_state_get_valid():
     """Test getting a single state by ID."""
+    # First create the country
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                                    json={"name": "United States", "code": "US"})
+    country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
@@ -382,10 +397,17 @@ def test_state_get_valid():
     assert ep.STATE_RESP in resp_json
     assert resp_json[ep.STATE_RESP]["name"] == "Illinois"
 
+    # Cleanup
     TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
 
 def test_state_put_valid():
     """Test updating a state with valid data."""
+    # First create the country
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
+                                    json={"name": "United States", "code": "US"})
+    country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
+
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
@@ -415,6 +437,10 @@ def test_state_put_valid():
     assert data["capital"] == "Chicago"
     assert data["population"] == 13000000
     assert str(data["state_id"]) == str(state_id)
+
+    # Cleanup
+    TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
 
 
 def test_state_get_not_found():

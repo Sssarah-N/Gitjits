@@ -163,3 +163,38 @@ def read_dict(collection, key, db=GEO_DB, no_id=True) -> dict:
     for rec in recs:
         recs_as_dict[rec[key]] = rec
     return recs_as_dict
+
+
+@needs_db
+def ensure_indexes(db=GEO_DB):
+    """
+    Create indexes for all collections to improve query performance.
+    Safe to call multiple times - MongoDB ignores duplicate index creation.
+    """
+    # Countries indexes
+    client[db]['countries'].create_index('id', unique=True)
+    client[db]['countries'].create_index('code', unique=True, sparse=True)
+
+    # States indexes - composite unique on state_code + country_code
+    client[db]['states'].create_index('id', unique=True)
+    client[db]['states'].create_index(
+        [('state_code', pm.ASCENDING), ('country_code', pm.ASCENDING)],
+        unique=True,
+        sparse=True
+    )
+    client[db]['states'].create_index('country_code')
+
+    # Cities indexes
+    client[db]['cities'].create_index('id', unique=True)
+    client[db]['cities'].create_index('state_code')
+
+    print('Database indexes created/verified.')
+
+
+@needs_db
+def exists(collection: str, filt: dict, db=GEO_DB) -> bool:
+    """
+    Check if a document matching the filter exists.
+    More efficient than read_one when you only need existence check.
+    """
+    return client[db][collection].count_documents(filt, limit=1) > 0

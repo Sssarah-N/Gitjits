@@ -65,6 +65,20 @@ def create(flds: dict, reload=True):
         lon = flds[LONGITUDE]
         if not isinstance(lon, (int, float)) or not (-180 <= lon <= 180):
             raise ValueError(f'Longitude must be a number between -180 and 180, got {lon}')
+
+    # Validate country exists if country_code provided
+    if flds.get(COUNTRY_CODE):
+        import countries.queries as countries_qry
+        if not countries_qry.code_exists(flds[COUNTRY_CODE]):
+            raise ValueError(f'Country with code {flds[COUNTRY_CODE]} does not exist')
+
+    # Check for duplicate state_code + country_code combination
+    if flds.get(STATE_CODE) and flds.get(COUNTRY_CODE):
+        if state_exists(flds[STATE_CODE], flds[COUNTRY_CODE]):
+            raise ValueError(
+                f'State {flds[STATE_CODE]} already exists in country {flds[COUNTRY_CODE]}'
+            )
+
     new_id = dbc.create(STATE_COLLECTION, flds)
     if reload:
         load_cache()
@@ -139,9 +153,63 @@ def load_cache():
     states = dbc.read(STATE_COLLECTION)
     for state in states:
         if STATE_CODE in state:
-            country = state.get(COUNTRY_CODE, 'US')  
+            country = state.get(COUNTRY_CODE, 'US')
             cache[(state[STATE_CODE], country)] = state
-    
+
+
+def state_exists(state_code: str, country_code: str) -> bool:
+    """
+    Check if a state with given state_code exists in the country.
+
+    Args:
+        state_code: State/province code (e.g., 'NY', 'ON')
+        country_code: Country code (e.g., 'US', 'CA')
+
+    Returns:
+        True if state exists, False otherwise
+    """
+    return dbc.exists(STATE_COLLECTION, {
+        STATE_CODE: state_code.upper(),
+        COUNTRY_CODE: country_code.upper()
+    })
+
+
+def get_by_code(state_code: str, country_code: str) -> dict:
+    """
+    Get a state by its state code and country code.
+
+    Args:
+        state_code: State/province code (e.g., 'NY', 'ON')
+        country_code: Country code (e.g., 'US', 'CA')
+
+    Returns:
+        State dict
+
+    Raises:
+        KeyError: If state not found
+    """
+    state = dbc.read_one(STATE_COLLECTION, {
+        STATE_CODE: state_code.upper(),
+        COUNTRY_CODE: country_code.upper()
+    })
+    if not state:
+        raise KeyError(f'State not found: {state_code} in {country_code}')
+    return state
+
+
+def get_states_by_country(country_code: str) -> list:
+    """
+    Get all states in a country.
+
+    Args:
+        country_code: Country code (e.g., 'US', 'CA')
+
+    Returns:
+        List of state dicts
+    """
+    return dbc.read_many(STATE_COLLECTION, {COUNTRY_CODE: country_code.upper()})
+
+
 def main():
     create(SAMPLE_STATE)
     print(read())

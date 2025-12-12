@@ -71,7 +71,12 @@ def create(flds: dict, reload=True):
     if POPULATION in flds and flds[POPULATION] is not None:
         if not isinstance(flds[POPULATION], int):
             raise ValueError(f'Population must be an integer, got {type(flds[POPULATION]).__name__}')
-    
+
+    # Check for duplicate country code
+    if flds.get(CODE):
+        if code_exists(flds[CODE]):
+            raise ValueError(f'Country with code {flds[CODE]} already exists')
+
     new_id = dbc.create(COUNTRY_COLLECTION, flds)
     print(f'{new_id=}')
     dbc.update(COUNTRY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})

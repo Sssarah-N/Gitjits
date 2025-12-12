@@ -96,22 +96,20 @@ def num_cities() -> int:
 def create(flds: dict):
     """
     Create a new city with validation (international support).
-    
+
     Args:
         flds: Dictionary with 'name' (required) and 'state_code' (optional)
               state_code can be any region identifier (US state, Canadian province, etc.)
-        
+
     Returns:
         New city ID as string
-        
+
     Raises:
         ValueError: If validation fails (bad type, missing name, or invalid state_code format)
-        
+
     Examples:
-        >>> create({'name': 'New York', 'state_code': 'NY'})      # US
-        >>> create({'name': 'Toronto', 'state_code': 'ON'})       # Canada
-        >>> create({'name': 'Sydney', 'state_code': 'NSW'})       # Australia
-        >>> create({'name': 'Tokyo', 'state_code': 'Tokyo'})      # Japan
+        >>> create({'name': 'New York', 'state_code': 'NY'})
+        >>> create({'name': 'Toronto', 'state_code': 'ON'})
     """
     dbc.connect_db()
     print(f'{flds=}')
@@ -119,6 +117,7 @@ def create(flds: dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
+
     new_id = dbc.create(CITY_COLLECTION, flds)
     print(f'{new_id=}')
     dbc.update(CITY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
@@ -174,6 +173,20 @@ def delete(city_id: str):
 
 def read() -> list:
     return dbc.read(CITY_COLLECTION)
+
+
+def get_cities_by_state(state_code: str) -> list:
+    """
+    Get all cities in a state.
+
+    Args:
+        state_code: State/province code (e.g., 'NY', 'ON')
+
+    Returns:
+        List of city dicts
+    """
+    return dbc.read_many(CITY_COLLECTION, {STATE_CODE: state_code})
+
 
 def main():
     print(read())

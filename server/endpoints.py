@@ -58,6 +58,28 @@ country_model = api.model('Country', {
                                example='North America')
 })
 
+# Define error message model for Swagger documentation
+error_model = api.model('Error', {
+    'message': fields.String(required=True, description='Error message',
+                             example='Error message here')
+})
+
+# Define message model for Swagger documentation
+message_model = api.model('Message', {
+    'message': fields.String(required=True, description='Message',
+                             example='Message here')
+})
+
+# Define cities model for Swagger documentation
+cities_model = api.model('Cities', {
+    'Cities': fields.List(fields.Nested(city_model), required=True, description='List of cities',
+                          example=[{'city_id': '693b8bd5159f4d68e5f79447'}]
+    )
+})
+
+CITY_ID_DOC = 'ID of the city (MongoDB ObjectId)'
+
+
 MESSAGE = 'Message'
 ERROR = "Error"
 READ = 'read'
@@ -102,6 +124,10 @@ class Cities(Resource):
     The purpose of the HelloWorld class is to have a simple test to see if the
     app is working at all.
     """
+    @api.doc(description='Get all cities')
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self):
         """
         A trivial endpoint to see if the server is running.
@@ -113,6 +139,9 @@ class Cities(Resource):
         return {CITIES_RESP: cities}
 
     @api.expect(city_model)
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def post(self):
         """
         Create a new city
@@ -134,6 +163,10 @@ class City(Resource):
     """
     This class handles operations on individual cities.
     """
+    @api.doc(params={'city_id': CITY_ID_DOC})
+    @api.response(200, 'Success', city_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def get(self, city_id):
         """
         Get a single city by ID.
@@ -147,6 +180,10 @@ class City(Resource):
         return {CITY_RESP: city}
 
     @api.expect(city_model)
+    @api.doc(params={'city_id': CITY_ID_DOC, 'payload': 'City fields to update'})
+    @api.response(200, 'Success', city_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def put(self, city_id):
         """
         Update a city by ID.
@@ -162,6 +199,10 @@ class City(Resource):
             return {ERROR: str(err)}, 404
         return {CITY_RESP: updated_city}, 200
 
+    @api.doc(params={'city_id': CITY_ID_DOC})
+    @api.response(200, 'Success', message_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def delete(self, city_id):
         """
         Delete a city by ID.

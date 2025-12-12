@@ -5,7 +5,7 @@ The endpoint called `endpoints` will return all available endpoints.
 # from http import HTTPStatus
 
 from flask import Flask, request  # , request
-from flask_restx import Resource, Api, fields  # Namespace
+from flask_restx import Resource, Api, fields, Namespace  # Namespace
 from flask_cors import CORS
 
 # import werkzeug.exceptions as wz
@@ -16,6 +16,17 @@ import countries.queries as coqry
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+
+# Swagger docs namespaces
+cities_ns = Namespace('cities', description='Cities operations')
+states_ns = Namespace('states', description='States operations')
+countries_ns = Namespace('countries', description='Countries operations')
+utils_ns = Namespace('utils', description='Utility operations')
+
+api.add_namespace(cities_ns)
+api.add_namespace(states_ns)
+api.add_namespace(countries_ns)
+api.add_namespace(utils_ns)
 
 # Define the city model for Swagger documentation
 city_model = api.model('City', {
@@ -77,8 +88,15 @@ cities_model = api.model('Cities', {
     )
 })
 
-CITY_ID_DOC = 'ID of the city (MongoDB ObjectId)'
+# Define states model for Swagger documentation
+states_model = api.model('States', {
+    'States': fields.List(fields.Nested(state_model), required=True, description='List of states',
+                          example=[{'state_id': '693b8bd5159f4d68e5f79447'}]
+    )
+})
 
+CITY_ID_DOC = 'ID of the city (MongoDB ObjectId)'
+STATE_ID_DOC = 'ID of the state (MongoDB ObjectId)'
 
 MESSAGE = 'Message'
 ERROR = "Error"
@@ -118,7 +136,7 @@ DELETE_ALL_EP = '/delete-all-data'
 DELETE_ALL_RESP = 'Deleted'
 
 
-@api.route(f'{CITIES_EPS}')
+@cities_ns.route(f'{CITIES_EPS}')
 class Cities(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
@@ -158,7 +176,7 @@ class Cities(Resource):
         return {CITIES_RESP: {"city_id": city_id}}
 
 
-@api.route(CITY_EP)
+@cities_ns.route(CITY_EP)
 class City(Resource):
     """
     This class handles operations on individual cities.
@@ -216,11 +234,15 @@ class City(Resource):
         return {MESSAGE: f"City {city_id} deleted successfully"}
 
 
-@api.route(f'{STATES_EPS}')
+@states_ns.route(f'{STATES_EPS}')
 class States(Resource):
     """
     This class handles operations on the states collection.
     """
+    @api.doc(description='Get all states')
+    @api.response(200, 'Success', states_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self):
         """
         Get all states.
@@ -232,6 +254,9 @@ class States(Resource):
         return {STATES_RESP: states}
 
     @api.expect(state_model)
+    @api.response(200, 'Success', states_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def post(self):
         """
         Create a new state
@@ -248,11 +273,15 @@ class States(Resource):
         return {STATES_RESP: {"state_id": state_id}}
 
 
-@api.route(STATE_EP)
+@states_ns.route(STATE_EP)
 class State(Resource):
     """
     This class handles operations on individual states.
     """
+    @api.doc(params={'state_id': STATE_ID_DOC})
+    @api.response(200, 'Success', state_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def get(self, state_id):
         """
         Get a single state by ID.
@@ -266,6 +295,10 @@ class State(Resource):
         return {STATE_RESP: state}
 
     @api.expect(state_model)
+    @api.doc(params={'state_id': STATE_ID_DOC, 'payload': 'State fields to update'})
+    @api.response(200, 'Success', state_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def put(self, state_id):
         """
         Update a state by ID.
@@ -281,6 +314,10 @@ class State(Resource):
             return {ERROR: str(err)}, 404
         return {STATE_RESP: updated_state}, 200
 
+    @api.doc(params={'state_id': STATE_ID_DOC})
+    @api.response(200, 'Success', message_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(404, 'Not Found', error_model)
     def delete(self, state_id):
         """
         Delete a state by ID.
@@ -294,11 +331,15 @@ class State(Resource):
         return {MESSAGE: f"State {state_id} deleted successfully"}
 
 
-@api.route(CITIES_BY_STATE_EP)
+@cities_ns.route(CITIES_BY_STATE_EP)
 class CitiesByState(Resource):
     """
     Get all cities by state code.
     """
+    @api.doc(description='Get all cities by state code')
+    @api.response(200, 'Success', cities_model)
+    @api.response(400, 'Bad Request', error_model)
+    @api.response(503, 'Database connection error', error_model)
     def get(self, state_code):
         """
         Get all cities in a given state by state code.
@@ -311,7 +352,7 @@ class CitiesByState(Resource):
             return {ERROR: str(err)}, 503
 
 
-@api.route(STATISTICS_EP)
+@utils_ns.route(STATISTICS_EP)
 class Statistics(Resource):
     """
     Get comprehensive database statistics.
@@ -355,7 +396,7 @@ class Statistics(Resource):
             return {ERROR: f'Error getting statistics: {str(err)}'}, 500
 
 
-@api.route(HELLO_EP)
+@utils_ns.route(HELLO_EP)
 class HelloWorld(Resource):
     """
     The purpose of the HelloWorld class is to have a simple test to see if the
@@ -368,7 +409,7 @@ class HelloWorld(Resource):
         return {HELLO_RESP: 'world'}
 
 
-@api.route(f'{COUNTRIES_EPS}')
+@countries_ns.route(f'{COUNTRIES_EPS}')
 class Countries(Resource):
     """
     This class handles operations on the countries collection.
@@ -406,7 +447,7 @@ class Countries(Resource):
         return {COUNTRIES_RESP: {"country_id": country_id}}
 
 
-@api.route(COUNTRY_EP)
+@countries_ns.route(COUNTRY_EP)
 class Country(Resource):
     """
     This class handles operations on individual countries.
@@ -465,7 +506,7 @@ class Country(Resource):
         return {MESSAGE: f"Country {country_id} deleted successfully"}
 
 
-@api.route(DELETE_ALL_EP)
+@utils_ns.route(DELETE_ALL_EP)
 class DeleteAllData(Resource):
     """
     Delete all test data from the database.
@@ -525,7 +566,7 @@ class DeleteAllData(Resource):
             return {ERROR: f'Error deleting data: {str(err)}'}, 500
 
 
-@api.route(ENDPOINT_EP)
+@utils_ns.route(ENDPOINT_EP)
 class Endpoints(Resource):
     """
     This class will serve as live, fetchable documentation of what endpoints

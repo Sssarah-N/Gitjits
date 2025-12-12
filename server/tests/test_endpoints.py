@@ -351,17 +351,17 @@ def test_states_get():
 
 def test_states_post():
     """Test creating a state."""
-    # First create the country
+    # First create the country (use unique code to avoid conflicts)
     country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "United States", "code": "US"})
+                                    json={"name": "Test Country SP", "code": "SP"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
-                           json={"name": "California",
-                                 "state_code": "CA",
-                                 "country_code": "US",
-                                 "capital": "Sacramento",
-                                 "population": 39500000})
+                           json={"name": "Test State",
+                                 "state_code": "TS",
+                                 "country_code": "SP",
+                                 "capital": "Test Capital",
+                                 "population": 1000000})
     resp_json = resp.get_json()
     assert ep.STATES_RESP in resp_json
     assert "state_id" in resp_json[ep.STATES_RESP]
@@ -374,18 +374,18 @@ def test_states_post():
 
 def test_state_get_valid():
     """Test getting a single state by ID."""
-    # First create the country
+    # First create the country (use unique code to avoid conflicts)
     country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "United States", "code": "US"})
+                                    json={"name": "Test Country SG", "code": "SG"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
-            "name": "Illinois",
-            "state_code": "IL",
-            "country_code": "US",
-            "capital": "Springfield",
+            "name": "Test State Get",
+            "state_code": "TG",
+            "country_code": "SG",
+            "capital": "Test Capital",
             "population": 12800000
         }
     )
@@ -395,7 +395,7 @@ def test_state_get_valid():
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.STATE_RESP in resp_json
-    assert resp_json[ep.STATE_RESP]["name"] == "Illinois"
+    assert resp_json[ep.STATE_RESP]["name"] == "Test State Get"
 
     # Cleanup
     TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
@@ -403,18 +403,18 @@ def test_state_get_valid():
 
 def test_state_put_valid():
     """Test updating a state with valid data."""
-    # First create the country
+    # First create the country (use unique code to avoid conflicts)
     country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "United States", "code": "US"})
+                                    json={"name": "Test Country SU", "code": "SU"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
-            "name": "Illinois",
-            "state_code": "IL",
-            "country_code": "US",
-            "capital": "Springfield",
+            "name": "Test State Update",
+            "state_code": "TU",
+            "country_code": "SU",
+            "capital": "Old Capital",
             "population": 12800000
         }
     )
@@ -423,18 +423,18 @@ def test_state_put_valid():
     update_resp = TEST_CLIENT.put(
         f"{ep.STATES_EPS}/{state_id}",
         json={
-            "name": "New Illinois",
-            "state_code": "IL",
-            "country_code": "US",
-            "capital": "Chicago",
+            "name": "Updated State",
+            "state_code": "TU",
+            "country_code": "SU",
+            "capital": "New Capital",
             "population": 13000000
         }
     )
 
     assert update_resp.status_code == 200
     data = update_resp.get_json()[ep.STATE_RESP]
-    assert data["name"] == "New Illinois"
-    assert data["capital"] == "Chicago"
+    assert data["name"] == "Updated State"
+    assert data["capital"] == "New Capital"
     assert data["population"] == 13000000
     assert str(data["state_id"]) == str(state_id)
 

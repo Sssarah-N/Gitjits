@@ -1,12 +1,18 @@
 from copy import deepcopy
+import uuid
 
 import pytest
 from unittest.mock import patch
 
 from countries import queries as qry
 
+
 def get_temp_rec():
-    return deepcopy(qry.SAMPLE_COUNTRY)
+    """Get a temp record with a unique code to avoid conflicts."""
+    rec = deepcopy(qry.SAMPLE_COUNTRY)
+    # Use unique code to avoid duplicate conflicts
+    rec[qry.CODE] = f'T{uuid.uuid4().hex[:4].upper()}'
+    return rec
 
 
 @pytest.fixture(scope='function')
@@ -71,9 +77,10 @@ def test_create_missing_name():
 
 def test_create_with_all_fields():
     """Test creating a country with all fields."""
+    unique_code = f'C{uuid.uuid4().hex[:3].upper()}'
     country_data = {
-        qry.NAME: 'Canada',
-        qry.CODE: 'CA',
+        qry.NAME: 'Test Canada',
+        qry.CODE: unique_code,
         qry.CAPITAL: 'Ottawa',
         qry.POPULATION: 38000000,
         qry.CONTINENT: 'North America'
@@ -83,8 +90,8 @@ def test_create_with_all_fields():
     
     # Verify it was created
     country = qry.get(country_id)
-    assert country[qry.NAME] == 'Canada'
-    assert country[qry.CODE] == 'CA'
+    assert country[qry.NAME] == 'Test Canada'
+    assert country[qry.CODE] == unique_code
     
     qry.delete(country_id)
 
@@ -176,22 +183,23 @@ def test_delete_invalid_id():
 
 def test_get_by_code():
     """Test getting country by code."""
+    unique_code = f'M{uuid.uuid4().hex[:3].upper()}'
     country_data = {
-        qry.NAME: 'Mexico',
-        qry.CODE: 'MX',
+        qry.NAME: 'Test Mexico',
+        qry.CODE: unique_code,
         qry.CAPITAL: 'Mexico City',
         qry.POPULATION: 128000000
     }
     country_id = qry.create(country_data)
     
     # Get by code
-    country = qry.get_by_code('MX')
-    assert country[qry.NAME] == 'Mexico'
-    assert country[qry.CODE] == 'MX'
+    country = qry.get_by_code(unique_code)
+    assert country[qry.NAME] == 'Test Mexico'
+    assert country[qry.CODE] == unique_code
     
     # Test case-insensitive
-    country = qry.get_by_code('mx')
-    assert country[qry.NAME] == 'Mexico'
+    country = qry.get_by_code(unique_code.lower())
+    assert country[qry.NAME] == 'Test Mexico'
     
     qry.delete(country_id)
 
@@ -204,16 +212,17 @@ def test_get_by_code_not_found():
 
 def test_code_exists():
     """Test checking if country code exists."""
+    unique_code = f'J{uuid.uuid4().hex[:3].upper()}'
     country_data = {
-        qry.NAME: 'Japan',
-        qry.CODE: 'JP',
+        qry.NAME: 'Test Japan',
+        qry.CODE: unique_code,
         qry.CAPITAL: 'Tokyo',
         qry.POPULATION: 126000000
     }
     country_id = qry.create(country_data)
     
-    assert qry.code_exists('JP') is True
-    assert qry.code_exists('jp') is True  # case-insensitive
+    assert qry.code_exists(unique_code) is True
+    assert qry.code_exists(unique_code.lower()) is True  # case-insensitive
     assert qry.code_exists('NONEXISTENT') is False
     
     qry.delete(country_id)
@@ -223,9 +232,10 @@ def test_num_countries():
     """Test counting countries."""
     initial_count = qry.num_countries()
     
+    unique_code = f'N{uuid.uuid4().hex[:3].upper()}'
     country_data = {
         qry.NAME: 'Test Country',
-        qry.CODE: 'TC'
+        qry.CODE: unique_code
     }
     country_id = qry.create(country_data)
     
@@ -235,15 +245,16 @@ def test_num_countries():
     assert qry.num_countries() == initial_count
 
 def test_search_by_continent():
+    unique_code = f'F{uuid.uuid4().hex[:3].upper()}'
     rec = {
-        qry.NAME: "France",
-        qry.CODE: "FR",
+        qry.NAME: "Test France",
+        qry.CODE: unique_code,
         qry.CONTINENT: "Europe"
     }
     cid = qry.create(rec)
 
     results = qry.search({qry.CONTINENT: "Europe"})
-    assert any(r[qry.CODE] == "FR" for r in results)
+    assert any(r[qry.CODE] == unique_code for r in results)
 
     qry.delete(cid)
     

@@ -1,6 +1,8 @@
 """
 This file deals with our city-level data.
 """
+from random import randint
+
 from bson import ObjectId
 import data.db_connect as dbc
 
@@ -24,15 +26,17 @@ city_cache = {
     '1': SAMPLE_CITY,
 }
 
+
 def db_connect(success_ratio: int) -> bool:
     """
     Return True if connected, False if not.
     """
     return randint(1, success_ratio) % success_ratio
 
+
 def is_valid_id(_id: str) -> bool:
     """
-    Since flask treat http request as text, 
+    Since flask treat http request as text,
     everything is passed in as a string by default,
     therefore nothing would be an invalid id for now.
     Empty string returns false,
@@ -49,16 +53,17 @@ def is_valid_id(_id: str) -> bool:
 def is_valid_state_code(state_code: str) -> bool:
     """
     Validate state/province/region code format (international-friendly).
-    
+
     Accepts any alphanumeric code with reasonable length.
     Works for US states, Canadian provinces, Australian states, etc.
-    
+
     Args:
-        state_code: State/province/region code (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
-        
+        state_code: State/province/region code
+            (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
+
     Returns:
         True if format is valid, False otherwise
-        
+
     Examples:
         >>> is_valid_state_code('NY')      # US - New York
         True
@@ -73,19 +78,19 @@ def is_valid_state_code(state_code: str) -> bool:
     """
     if not isinstance(state_code, str):
         return False
-    
+
     # Remove whitespace for validation
     code = state_code.strip()
-    
+
     # Check length (2-10 characters is reasonable for most regions)
     if len(code) < 1 or len(code) > MAX_STATE_CODE_LENGTH:
         return False
-    
+
     # Allow alphanumeric, spaces, hyphens (for regions like "New South Wales")
     # But require at least one letter
     if not any(c.isalpha() for c in code):
         return False
-    
+
     return True
 
 
@@ -99,13 +104,15 @@ def create(flds: dict):
 
     Args:
         flds: Dictionary with 'name' (required) and 'state_code' (optional)
-              state_code can be any region identifier (US state, Canadian province, etc.)
+            state_code can be any region identifier
+            (US state, Canadian province, etc.)
 
     Returns:
         New city ID as string
 
     Raises:
-        ValueError: If validation fails (bad type, missing name, or invalid state_code format)
+        ValueError: If validation fails
+            (bad type, missing name, or invalid state_code format)
 
     Examples:
         >>> create({'name': 'New York', 'state_code': 'NY'})
@@ -127,17 +134,18 @@ def create(flds: dict):
 def update(city_id: str, flds: dict):
     """
     Update an existing city with validation (international support).
-    
+
     Args:
         city_id: ID of the city to update
         flds: Dictionary with fields to update (name, state_code)
-              state_code can be any region identifier
-        
+            state_code can be any region identifier
+
     Returns:
         The city ID
-        
+
     Raises:
-        ValueError: If validation fails (bad ID, bad type, or invalid state_code format)
+        ValueError: If validation fails
+            (bad ID, bad type, or invalid state_code format)
         KeyError: If city not found
     """
     if not is_valid_id(city_id):
@@ -171,6 +179,7 @@ def delete(city_id: str):
         raise KeyError(f'City not found: {city_id}')
     return ret
 
+
 def read() -> list:
     return dbc.read(CITY_COLLECTION)
 
@@ -191,16 +200,20 @@ def get_cities_by_state(state_code: str) -> list:
 def get_by_state_code(state_code: str) -> list:
     """
     Get all cities in a state/province/region by state code (case-insensitive).
+
     Alias for get_cities_by_state for backwards compatibility.
-    
+
     Args:
-        state_code: State/province/region code (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
-    
+        state_code: State/province/region code
+            (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
+
     Returns:
         List of city dictionaries matching the state code
     """
     if not isinstance(state_code, str):
-        raise ValueError(f'State code must be a string, got {type(state_code).__name__}')
+        raise ValueError(
+            f'State code must be a string, got {type(state_code).__name__}'
+        )
     all_cities = dbc.read(CITY_COLLECTION)
     return [
         city for city in all_cities
@@ -211,6 +224,7 @@ def get_by_state_code(state_code: str) -> list:
 def search(filt: dict) -> list:
     """General-purpose search on city fields."""
     return dbc.read_many(CITY_COLLECTION, filt)
+
 
 def main():
     print(read())

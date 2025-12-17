@@ -27,6 +27,7 @@ country_cache = {
     '1': SAMPLE_COUNTRY,
 }
 
+
 def is_valid_id(_id: str) -> bool:
     """
     Validate ID format.
@@ -45,20 +46,21 @@ def num_countries() -> int:
 def create(flds: dict, reload=True):
     """
     Create a new country.
-    
+
     Args:
         flds: Dictionary with 'name' (required) and optional fields:
-              - code: ISO country code (e.g., 'US', 'CA', 'UK')
-              - capital: Capital city name
-              - population: Country population
-              - continent: Continent name
+            - code: ISO country code (e.g., 'US', 'CA', 'UK')
+            - capital: Capital city name
+            - population: Country population
+            - continent: Continent name
         reload: If True, reload the cache after creating (default: True)
-    
+
     Returns:
         New country ID as string
-    
+
     Raises:
-        ValueError: If validation fails (bad type, missing name, invalid fields)
+        ValueError: If validation fails
+            (bad type, missing name, invalid fields)
     """
     dbc.connect_db()
     print(f'{flds=}')
@@ -66,11 +68,14 @@ def create(flds: dict, reload=True):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
-    
+
     # Validate population if provided
     if POPULATION in flds and flds[POPULATION] is not None:
         if not isinstance(flds[POPULATION], int):
-            raise ValueError(f'Population must be an integer, got {type(flds[POPULATION]).__name__}')
+            raise ValueError(
+                f'Population must be an integer, '
+                f'got {type(flds[POPULATION]).__name__}'
+            )
 
     # Check for duplicate country code
     if flds.get(CODE):
@@ -88,14 +93,14 @@ def create(flds: dict, reload=True):
 def update(country_id: str, flds: dict):
     """
     Update an existing country.
-    
+
     Args:
         country_id: ID of the country to update
         flds: Dictionary with fields to update
-        
+
     Returns:
         The country ID
-        
+
     Raises:
         ValueError: If validation fails (bad ID or bad type)
         KeyError: If country not found
@@ -104,11 +109,14 @@ def update(country_id: str, flds: dict):
         raise ValueError(f'Invalid ID: {country_id}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
-    
+
     # Validate population if provided
     if POPULATION in flds and flds[POPULATION] is not None:
         if not isinstance(flds[POPULATION], int):
-            raise ValueError(f'Population must be an integer, got {type(flds[POPULATION]).__name__}')
+            raise ValueError(
+                f'Population must be an integer, '
+                f'got {type(flds[POPULATION]).__name__}'
+            )
 
     updated = dbc.update(COUNTRY_COLLECTION, {ID: country_id}, flds)
 
@@ -145,13 +153,13 @@ def read() -> list:
 def get_by_code(code: str) -> dict:
     """
     Get a country by its country code.
-    
+
     Args:
         code: Country code (e.g., 'US', 'CA', 'UK')
-    
+
     Returns:
         Country dict
-    
+
     Raises:
         KeyError: If country not found
     """
@@ -168,6 +176,7 @@ def code_exists(code: str) -> bool:
         return True
     except KeyError:
         return False
+
 
 def search(filt: dict) -> list:
     """General-purpose search on country fields."""
@@ -186,4 +195,3 @@ def load_cache():
 
 def main():
     print(read())
-

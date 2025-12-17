@@ -33,10 +33,11 @@ PA_SETTINGS = {
     MAX_POOL_SIZE: os.getenv('MONGO_MAX_POOL_SIZE', 1),
 }
 
+
 def needs_db(fn, *args, **kwargs):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        global client
+        # global client
         if not client:
             connect_db()
         return fn(*args, **kwargs)
@@ -73,7 +74,9 @@ def connect_db():
             except (pymongo.errors.ServerSelectionTimeoutError,
                     pymongo.errors.ConfigurationError,
                     pymongo.errors.OperationFailure) as e:
-                raise ConnectionError(f'Failed to connect to MongoDB: {str(e)}') from e
+                raise ConnectionError(
+                    f'Failed to connect to MongoDB: {str(e)}'
+                ) from e
         else:
             print("Connecting to Mongo locally.")
             try:
@@ -82,7 +85,9 @@ def connect_db():
                 client.admin.command('ping')
             except (pymongo.errors.ServerSelectionTimeoutError,
                     pymongo.errors.ConfigurationError) as e:
-                raise ConnectionError(f'Failed to connect to local MongoDB: {str(e)}') from e
+                raise ConnectionError(
+                    f'Failed to connect to local MongoDB: {str(e)}'
+                ) from e
     return client
 
 
@@ -90,12 +95,14 @@ def convert_mongo_id(doc: dict):
     if MONGO_ID in doc:
         # Convert mongo ID to a string so it works as JSON
         doc[MONGO_ID] = str(doc[MONGO_ID])
-        
+
+
 def close_db():
     global client
     if client:
         client.close()
         client = None
+
 
 @needs_db
 def create(collection, doc, db=GEO_DB):
@@ -106,6 +113,7 @@ def create(collection, doc, db=GEO_DB):
     ret = client[db][collection].insert_one(doc)
     return str(ret.inserted_id)
 
+
 @needs_db
 def read_one(collection, filt, db=GEO_DB):
     """
@@ -115,7 +123,8 @@ def read_one(collection, filt, db=GEO_DB):
     for doc in client[db][collection].find(filt):
         convert_mongo_id(doc)
         return doc
-    
+
+
 @needs_db
 def read_many(collection: str, filt: dict, db=GEO_DB, no_id=True) -> list:
     """
@@ -128,7 +137,8 @@ def read_many(collection: str, filt: dict, db=GEO_DB, no_id=True) -> list:
         else:
             convert_mongo_id(doc)
         results.append(doc)
-    return results    
+    return results
+
 
 @needs_db
 def delete(collection: str, filt: dict, db=GEO_DB):
@@ -139,9 +149,11 @@ def delete(collection: str, filt: dict, db=GEO_DB):
     del_result = client[db][collection].delete_one(filt)
     return del_result.deleted_count
 
+
 @needs_db
 def update(collection, filters, update_dict, db=GEO_DB):
     return client[db][collection].update_one(filters, {'$set': update_dict})
+
 
 @needs_db
 def read(collection, db=GEO_DB, no_id=True) -> list:
@@ -156,6 +168,7 @@ def read(collection, db=GEO_DB, no_id=True) -> list:
             convert_mongo_id(doc)
         ret.append(doc)
     return ret
+
 
 def read_dict(collection, key, db=GEO_DB, no_id=True) -> dict:
     recs = read(collection, db=db, no_id=no_id)

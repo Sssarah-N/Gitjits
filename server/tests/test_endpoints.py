@@ -1,10 +1,7 @@
 from http.client import (
     BAD_REQUEST,
-    FORBIDDEN,
-    NOT_ACCEPTABLE,
     NOT_FOUND,
     OK,
-    SERVICE_UNAVAILABLE,
 )
 
 from unittest.mock import patch
@@ -13,11 +10,11 @@ import pytest
 
 import server.endpoints as ep
 import cities.queries as cqry
-import states.queries as sqry
 
 TEST_CLIENT = ep.app.test_client()
 
 # fixtures
+
 
 @pytest.fixture
 def test_client():
@@ -51,18 +48,23 @@ def mock_city_cache():
         '2': {'name': 'Los Angeles', 'state_code': 'CA'},
     }
 
+
 def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)
     resp_json = resp.get_json()
     assert ep.HELLO_RESP in resp_json
 
+
 """always returns True to avoid connection errors in tests"""
+
+
 @patch('cities.queries.db_connect', return_value=True, autospec=True)
 def test_cities_get(mock_db_connect):
     resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}")
     resp_json = resp.get_json()
     assert ep.CITIES_RESP in resp_json
-    
+
+
 def test_cities_post():
     resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json={"name": "Test City"})
     resp_json = resp.get_json()
@@ -71,273 +73,281 @@ def test_cities_post():
     city_id = resp_json[ep.CITIES_RESP]['city_id']
     TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
 
-def test_cities_post_with_state_code():
-      """Test creating a city with state code."""
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Boston", "state_code": "MA"})
-      resp_json = resp.get_json()
-      assert ep.CITIES_RESP in resp_json
-      assert "city_id" in resp_json[ep.CITIES_RESP]
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{resp_json[ep.CITIES_RESP]['city_id']}")
+def test_cities_post_with_state_code():
+    """Test creating a city with state code."""
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Boston", "state_code": "MA"})
+    resp_json = resp.get_json()
+    assert ep.CITIES_RESP in resp_json
+    assert "city_id" in resp_json[ep.CITIES_RESP]
+
+    TEST_CLIENT.delete(
+        f"{ep.CITIES_EPS}/{resp_json[ep.CITIES_RESP]['city_id']}")
+
 
 def test_cities_post_missing_name():
-      """Test creating city without required name field."""
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"state_code": "CA"})
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test creating city without required name field."""
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"state_code": "CA"})
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
 
 def test_cities_post_invalid_data_type():
-      """Test creating city with non-dict data."""
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json="not a dict")
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test creating city with non-dict data."""
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json="not a dict")
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
 
 def test_city_get_valid():
-      """Test getting a single city by ID."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Seattle", "state_code": "WA"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+    """Test getting a single city by ID."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Seattle", "state_code": "WA"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
 
-      # Now get it
-      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.CITY_RESP in resp_json
-      assert resp_json[ep.CITY_RESP]["name"] == "Seattle"
+    # Now get it
+    resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.CITY_RESP in resp_json
+    assert resp_json[ep.CITY_RESP]["name"] == "Seattle"
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+
 
 def test_city_get_not_found():
-      """Test getting city that doesn't exist."""
-      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/nonexistent_id_999")
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
-      assert resp.status_code == NOT_FOUND
+    """Test getting city that doesn't exist."""
+    resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/nonexistent_id_999")
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+    assert resp.status_code == NOT_FOUND
 
 
 def test_endpoints_get():
-      """Test that /endpoints returns a list of available endpoints."""
-      resp = TEST_CLIENT.get(ep.ENDPOINT_EP)
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.ENDPOINT_RESP in resp_json
-      assert isinstance(resp_json[ep.ENDPOINT_RESP], list)
+    """Test that /endpoints returns a list of available endpoints."""
+    resp = TEST_CLIENT.get(ep.ENDPOINT_EP)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.ENDPOINT_RESP in resp_json
+    assert isinstance(resp_json[ep.ENDPOINT_RESP], list)
 
 
 def test_endpoints_not_empty():
-      """Test that /endpoints returns a non-empty list."""
-      resp = TEST_CLIENT.get(ep.ENDPOINT_EP)
-      resp_json = resp.get_json()
-      endpoints_list = resp_json[ep.ENDPOINT_RESP]
-      
-      assert len(endpoints_list) > 0
+    """Test that /endpoints returns a non-empty list."""
+    resp = TEST_CLIENT.get(ep.ENDPOINT_EP)
+    resp_json = resp.get_json()
+    endpoints_list = resp_json[ep.ENDPOINT_RESP]
+
+    assert len(endpoints_list) > 0
 
 
 # PUT (Update) Tests
 def test_city_put_valid():
-      """Test updating a city with valid data."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Portland", "state_code": "OR"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Update the city
-      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}",
-                            json={"name": "Portland", "state_code": "ME"})
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.CITY_RESP in resp_json
-      assert resp_json[ep.CITY_RESP][ep.CITY_ID] == city_id
-      
-      # Verify the update
-      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
-      resp_json = resp.get_json()
-      assert resp_json[ep.CITY_RESP]["state_code"] == "ME"
+    """Test updating a city with valid data."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Portland", "state_code": "OR"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    # Update the city
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}",
+                           json={"name": "Portland", "state_code": "ME"})
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.CITY_RESP in resp_json
+    assert resp_json[ep.CITY_RESP][ep.CITY_ID] == city_id
+
+    # Verify the update
+    resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+    resp_json = resp.get_json()
+    assert resp_json[ep.CITY_RESP]["state_code"] == "ME"
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+
 
 def test_city_put_not_found():
-      """Test updating a city that doesn't exist."""
-      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/nonexistent_id_999",
-                            json={"name": "Ghost City"})
-      assert resp.status_code == NOT_FOUND
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test updating a city that doesn't exist."""
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/nonexistent_id_999",
+                           json={"name": "Ghost City"})
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
 
 
 def test_city_put_invalid_data_type():
-      """Test updating a city with non-dict data."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Denver", "state_code": "CO"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Try to update with invalid data
-      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json="not a dict")
-      assert resp.status_code == BAD_REQUEST
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test updating a city with non-dict data."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Denver", "state_code": "CO"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    # Try to update with invalid data
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json="not a dict")
+    assert resp.status_code == BAD_REQUEST
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
 
 
 def test_city_put_empty_body():
-      """Test updating a city with empty dict."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Phoenix", "state_code": "AZ"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Update with empty dict (should still work, just no changes)
-      resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json={})
-      assert resp.status_code == OK
+    """Test updating a city with empty dict."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Phoenix", "state_code": "AZ"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    # Update with empty dict (should still work, just no changes)
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json={})
+    assert resp.status_code == OK
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
 
 
 # DELETE Tests
 def test_city_delete_valid():
-      """Test deleting a city with valid ID."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Miami", "state_code": "FL"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Delete the city
-      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.MESSAGE in resp_json
-      assert city_id in resp_json[ep.MESSAGE]
+    """Test deleting a city with valid ID."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Miami", "state_code": "FL"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+
+    # Delete the city
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.MESSAGE in resp_json
+    assert city_id in resp_json[ep.MESSAGE]
 
 
 def test_city_delete_and_verify_removed():
-      """Test that deleted city is actually removed."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Tampa", "state_code": "FL"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Delete the city
-      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == OK
-      
-      # Verify it's gone
-      resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == NOT_FOUND
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test that deleted city is actually removed."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Tampa", "state_code": "FL"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+
+    # Delete the city
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == OK
+
+    # Verify it's gone
+    resp = TEST_CLIENT.get(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
 
 
 def test_city_delete_not_found():
-      """Test deleting a city that doesn't exist."""
-      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/nonexistent_id_999")
-      assert resp.status_code == NOT_FOUND
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test deleting a city that doesn't exist."""
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/nonexistent_id_999")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
 
 
 def test_city_delete_twice():
-      """Test deleting the same city twice (should fail second time)."""
-      # First create a city
-      resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                             json={"name": "Orlando", "state_code": "FL"})
-      city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Delete once
-      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == OK
-      
-      # Try to delete again
-      resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == NOT_FOUND
-      resp_json = resp.get_json()
-      assert ep.ERROR in resp_json
+    """Test deleting the same city twice (should fail second time)."""
+    # First create a city
+    resp = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
+                            json={"name": "Orlando", "state_code": "FL"})
+    city_id = resp.get_json()[ep.CITIES_RESP]["city_id"]
+
+    # Delete once
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == OK
+
+    # Try to delete again
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
 
 
 # ============= CITIES BY STATE ENDPOINT TESTS =============
 
 def test_cities_by_state_valid():
-      """Test getting cities by state code."""
-      # Create cities in different states
-      test_city_id_1 = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                        json={"name": "Houston", "state_code": "TX"})
-      test_city_id_2 = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                        json={"name": "Dallas", "state_code": "TX"})
-      test_city_id_3 = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                        json={"name": "Austin", "state_code": "TX"})
-      test_city_id_4 = TEST_CLIENT.post(f"{ep.CITIES_EPS}",
-                        json={"name": "Miami", "state_code": "FL"})
+    """Test getting cities by state code."""
+    # Create cities in different states
+    test_city_id_1 = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json={
+                                      "name": "Houston", "state_code": "TX"})
+    test_city_id_2 = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json={
+                                      "name": "Dallas", "state_code": "TX"})
+    test_city_id_3 = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json={
+                                      "name": "Austin", "state_code": "TX"})
+    test_city_id_4 = TEST_CLIENT.post(f"{ep.CITIES_EPS}", json={
+                                      "name": "Miami", "state_code": "FL"})
 
-      test_city_id_1 = test_city_id_1.get_json()[ep.CITIES_RESP]["city_id"]
-      test_city_id_2 = test_city_id_2.get_json()[ep.CITIES_RESP]["city_id"]
-      test_city_id_3 = test_city_id_3.get_json()[ep.CITIES_RESP]["city_id"]
-      test_city_id_4 = test_city_id_4.get_json()[ep.CITIES_RESP]["city_id"]
-      
-      # Get cities in Texas
-      resp = TEST_CLIENT.get(f"{ep.CITIES_BY_STATE_EP}".replace("<state_code>", "TX"))
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.CITIES_RESP in resp_json
-      
-      # Filter for cities we just created (in case DB has others)
-      tx_cities = [city for city in resp_json[ep.CITIES_RESP]
-                  if city.get('name') in ['Houston', 'Dallas', 'Austin']]
-      assert len(tx_cities) >= 3
+    test_city_id_1 = test_city_id_1.get_json()[ep.CITIES_RESP]["city_id"]
+    test_city_id_2 = test_city_id_2.get_json()[ep.CITIES_RESP]["city_id"]
+    test_city_id_3 = test_city_id_3.get_json()[ep.CITIES_RESP]["city_id"]
+    test_city_id_4 = test_city_id_4.get_json()[ep.CITIES_RESP]["city_id"]
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_1}")
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_2}")
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_3}")
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_4}")
+    # Get cities in Texas
+    resp = TEST_CLIENT.get(
+        f"{ep.CITIES_BY_STATE_EP}".replace("<state_code>", "TX"))
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.CITIES_RESP in resp_json
 
+    # Filter for cities we just created (in case DB has others)
+    tx_cities = [city for city in resp_json[ep.CITIES_RESP]
+                 if city.get('name') in ['Houston', 'Dallas', 'Austin']]
+    assert len(tx_cities) >= 3
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_1}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_2}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_3}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{test_city_id_4}")
 
 
 # ============= TESTS USING FIXTURES =============
 
 def test_city_post_with_fixture(test_client, sample_city_data):
-      """Test creating a city using fixtures."""
-      resp = test_client.post(f"{ep.CITIES_EPS}", json=sample_city_data)
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert ep.CITIES_RESP in resp_json
-      assert "city_id" in resp_json[ep.CITIES_RESP]
+    """Test creating a city using fixtures."""
+    resp = test_client.post(f"{ep.CITIES_EPS}", json=sample_city_data)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.CITIES_RESP in resp_json
+    assert "city_id" in resp_json[ep.CITIES_RESP]
 
-      city_id = resp_json[ep.CITIES_RESP]['city_id']
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    city_id = resp_json[ep.CITIES_RESP]['city_id']
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
 
 
 def test_city_get_with_fixture(test_client, create_test_city):
-      """Test getting a city using create_test_city fixture."""
-      city_id = create_test_city(name="Chicago", state_code="IL")
-      
-      resp = test_client.get(f"{ep.CITIES_EPS}/{city_id}")
-      assert resp.status_code == OK
-      resp_json = resp.get_json()
-      assert resp_json[ep.CITY_RESP]["name"] == "Chicago"
+    """Test getting a city using create_test_city fixture."""
+    city_id = create_test_city(name="Chicago", state_code="IL")
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = test_client.get(f"{ep.CITIES_EPS}/{city_id}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert resp_json[ep.CITY_RESP]["name"] == "Chicago"
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
 
 
 def test_city_update_with_fixture(test_client, create_test_city):
-      """Test updating a city using fixtures."""
-      city_id = create_test_city(name="San Francisco", state_code="CA")
-      
-      resp = test_client.put(
-          f"{ep.CITIES_EPS}/{city_id}",
-          json={"name": "San Francisco", "state_code": "OR"}
-      )
-      assert resp.status_code == OK
+    """Test updating a city using fixtures."""
+    city_id = create_test_city(name="San Francisco", state_code="CA")
 
-      TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = test_client.put(
+        f"{ep.CITIES_EPS}/{city_id}",
+        json={"name": "San Francisco", "state_code": "OR"}
+    )
+    assert resp.status_code == OK
+
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+
 
 def test_update_nonexistent_city():
-      """Test if updating a non-existent city raises KeyError."""
-      city_id = "New Orleans"
-      with pytest.raises(KeyError):
-            cqry.update(city_id, {cqry.NAME: "Ghosttown"})
+    """Test if updating a non-existent city raises KeyError."""
+    city_id = "New Orleans"
+    with pytest.raises(KeyError):
+        cqry.update(city_id, {cqry.NAME: "Ghosttown"})
 
 
 # ============= STATE ENDPOINT TESTS =============
@@ -353,16 +363,16 @@ def test_states_get():
 def test_states_post():
     """Test creating a state."""
     # First create the country (use unique code to avoid conflicts)
-    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "Test Country SP", "code": "SP"})
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
+                                    "name": "Test Country SP", "code": "SP"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(f"{ep.STATES_EPS}",
-                           json={"name": "Test State",
-                                 "state_code": "TS",
-                                 "country_code": "SP",
-                                 "capital": "Test Capital",
-                                 "population": 1000000})
+                            json={"name": "Test State",
+                                  "state_code": "TS",
+                                  "country_code": "SP",
+                                  "capital": "Test Capital",
+                                  "population": 1000000})
     resp_json = resp.get_json()
     assert ep.STATES_RESP in resp_json
     assert "state_id" in resp_json[ep.STATES_RESP]
@@ -376,8 +386,8 @@ def test_states_post():
 def test_state_get_valid():
     """Test getting a single state by ID."""
     # First create the country (use unique code to avoid conflicts)
-    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "Test Country SG", "code": "SG"})
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
+                                    "name": "Test Country SG", "code": "SG"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(
@@ -402,19 +412,20 @@ def test_state_get_valid():
     TEST_CLIENT.delete(f"{ep.STATES_EPS}/{state_id}")
     TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
 
+
 def test_state_put_valid():
     """Test updating a state with valid data."""
     # First create the country (use unique code to avoid conflicts)
-    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                                    json={"name": "Test Country SU", "code": "SU"})
+    country_resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
+                                    "name": "Test Country ZZ", "code": "ZZ"})
     country_id = country_resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
 
     resp = TEST_CLIENT.post(
         f"{ep.STATES_EPS}",
         json={
             "name": "Test State Update",
-            "state_code": "TU",
-            "country_code": "SU",
+            "state_code": "ZT",
+            "country_code": "ZZ",
             "capital": "Old Capital",
             "population": 12800000
         }
@@ -425,8 +436,8 @@ def test_state_put_valid():
         f"{ep.STATES_EPS}/{state_id}",
         json={
             "name": "Updated State",
-            "state_code": "TU",
-            "country_code": "SU",
+            "state_code": "ZT",
+            "country_code": "ZZ",
             "capital": "New Capital",
             "population": 13000000
         }
@@ -460,9 +471,9 @@ def test_statistics_get():
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.STATISTICS_RESP in resp_json
-    
+
     stats = resp_json[ep.STATISTICS_RESP]
-    
+
     # Check required fields
     assert 'total_countries' in stats
     assert 'total_states' in stats
@@ -470,19 +481,18 @@ def test_statistics_get():
     assert 'database' in stats
     assert 'collections' in stats
 
-    
     # Verify types
     assert isinstance(stats['total_countries'], int)
     assert isinstance(stats['total_states'], int)
     assert isinstance(stats['total_cities'], int)
     assert isinstance(stats['database'], str)
     assert isinstance(stats['collections'], list)
-    
+
     # Verify collections list
     assert 'countries' in stats['collections']
     assert 'states' in stats['collections']
     assert 'cities' in stats['collections']
-    
+
     # Check optional breakdown
     if 'states_by_country' in stats:
         assert isinstance(stats['states_by_country'], dict)
@@ -501,15 +511,15 @@ def test_countries_get():
 def test_countries_post():
     """Test creating a country."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Canada",
-                                 "code": "CA",
-                                 "capital": "Ottawa",
-                                 "population": 38000000,
-                                 "continent": "North America"})
+                            json={"name": "Canada",
+                                  "code": "CA",
+                                  "capital": "Ottawa",
+                                  "population": 38000000,
+                                  "continent": "North America"})
     resp_json = resp.get_json()
     assert ep.COUNTRIES_RESP in resp_json
     assert "country_id" in resp_json[ep.COUNTRIES_RESP]
-    
+
     country_id = resp_json[ep.COUNTRIES_RESP]["country_id"]
     TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
 
@@ -517,11 +527,11 @@ def test_countries_post():
 def test_countries_post_minimal():
     """Test creating country with only required fields."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Test Country"})
+                            json={"name": "Test Country"})
     resp_json = resp.get_json()
     assert ep.COUNTRIES_RESP in resp_json
     assert "country_id" in resp_json[ep.COUNTRIES_RESP]
-    
+
     country_id = resp_json[ep.COUNTRIES_RESP]["country_id"]
     TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
 
@@ -529,7 +539,7 @@ def test_countries_post_minimal():
 def test_countries_post_missing_name():
     """Test creating country without required name field."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"code": "XX"})
+                            json={"code": "XX"})
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
     assert resp.status_code == BAD_REQUEST
@@ -579,9 +589,9 @@ def test_country_put_valid():
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}",
         json={
-            "name": "Mexico",
-            "code": "MX",
-            "capital": "Mexico City",
+            "name": "Test Country ZM",
+            "code": "ZM",
+            "capital": "Test Capital",
             "population": 128000000
         }
     )
@@ -590,19 +600,19 @@ def test_country_put_valid():
     update_resp = TEST_CLIENT.put(
         f"{ep.COUNTRIES_EPS}/{country_id}",
         json={
-            "name": "United Mexican States",
-            "code": "MX",
-            "capital": "Mexico City",
+            "name": "Updated Country ZM",
+            "code": "ZM",
+            "capital": "New Capital",
             "population": 130000000,
-            "continent": "North America"
+            "continent": "Test Continent"
         }
     )
 
     assert update_resp.status_code == OK
     data = update_resp.get_json()[ep.COUNTRY_RESP]
-    assert data["name"] == "United Mexican States"
+    assert data["name"] == "Updated Country ZM"
     assert data["population"] == 130000000
-    assert data.get("continent") == "North America"
+    assert data.get("continent") == "Test Continent"
     assert str(data["country_id"]) == str(country_id)
 
     TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
@@ -611,7 +621,7 @@ def test_country_put_valid():
 def test_country_put_not_found():
     """Test updating a country that doesn't exist."""
     resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/nonexistent_country_id_999",
-                          json={"name": "Ghost Country"})
+                           json={"name": "Ghost Country"})
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -620,10 +630,11 @@ def test_country_put_not_found():
 def test_country_put_invalid_data_type():
     """Test updating a country with non-dict data."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Test Country", "code": "TC"})
+                            json={"name": "Test Country", "code": "TC"})
     country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
-    
-    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_id}", json="not a dict")
+
+    resp = TEST_CLIENT.put(
+        f"{ep.COUNTRIES_EPS}/{country_id}", json="not a dict")
     assert resp.status_code == BAD_REQUEST
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -634,9 +645,9 @@ def test_country_put_invalid_data_type():
 def test_country_put_empty_body():
     """Test updating a country with empty dict."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Brazil", "code": "BR"})
+                            json={"name": "Brazil", "code": "BR"})
     country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
-    
+
     resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_id}", json={})
     assert resp.status_code == OK
 
@@ -645,10 +656,10 @@ def test_country_put_empty_body():
 
 def test_country_delete_valid():
     """Test deleting a country with valid ID."""
-    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Test Country to Delete", "code": "TD"})
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
+                            "name": "Test Country to Delete", "code": "TD"})
     country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
-    
+
     resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
     assert resp.status_code == OK
     resp_json = resp.get_json()
@@ -659,12 +670,12 @@ def test_country_delete_valid():
 def test_country_delete_and_verify_removed():
     """Test that deleted country is actually removed."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "Temporary Country", "code": "TC"})
+                            json={"name": "Temporary Country", "code": "TC"})
     country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
-    
+
     resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
     assert resp.status_code == OK
-    
+
     resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}/{country_id}")
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
@@ -682,12 +693,12 @@ def test_country_delete_not_found():
 def test_country_delete_twice():
     """Test deleting the same country twice (should fail second time)."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                           json={"name": "One-time Country", "code": "OT"})
+                            json={"name": "One-time Country", "code": "OT"})
     country_id = resp.get_json()[ep.COUNTRIES_RESP]["country_id"]
-    
+
     resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
     assert resp.status_code == OK
-    
+
     resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_id}")
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()

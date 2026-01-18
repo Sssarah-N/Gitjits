@@ -1,7 +1,5 @@
 from copy import deepcopy
-from unittest.mock import patch, MagicMock
-from bson import ObjectId
-import uuid
+from unittest.mock import patch
 
 import pytest
 
@@ -12,15 +10,12 @@ import countries.queries as country_qry
 _test_db = {}
 _next_id = 1
 
-# Use a unique test country code to avoid conflicts
-TEST_COUNTRY_CODE = None
+# Fixed test country code - uses 'ZZ' which is reserved/not a real ISO code
+TEST_COUNTRY_CODE = 'ZZ'
 
 
 def get_test_country_code():
-    """Generate a unique test country code."""
-    global TEST_COUNTRY_CODE
-    if TEST_COUNTRY_CODE is None:
-        TEST_COUNTRY_CODE = f'T{uuid.uuid4().hex[:3].upper()}'
+    """Return the test country code."""
     return TEST_COUNTRY_CODE
 
 
@@ -83,7 +78,7 @@ def temp_state():
 
 
 def test_valid_id_min_length():
-    short_id = "."*(qry.MIN_ID_LEN - 1)
+    short_id = "." * (qry.MIN_ID_LEN - 1)
     result = qry.is_valid_id(short_id)
     assert not result
 
@@ -294,4 +289,4 @@ def test_search_by_state_id():
 @patch('data.db_connect.connect_db', return_value=True)
 def test_read_connection_error(mock_connect, mock_read):
     with pytest.raises(Exception):
-        countries = qry.read()
+        qry.read()

@@ -21,11 +21,13 @@ def temp_country_no_del():
     qry.create(temp_rec)
     return temp_rec
 
+
 @pytest.fixture(autouse=True)
 def reset_cache():
     """Reset country cache before each test to ensure test isolation."""
     qry.country_cache.clear()
     yield
+
 
 @pytest.fixture(scope='function')
 def temp_country():
@@ -39,7 +41,7 @@ def temp_country():
 
 
 def test_valid_id_min_length():
-    short_id = "."*(qry.MIN_ID_LEN - 1)
+    short_id = "." * (qry.MIN_ID_LEN - 1)
     result = qry.is_valid_id(short_id)
     assert not result
 
@@ -87,12 +89,12 @@ def test_create_with_all_fields():
     }
     country_id = qry.create(country_data)
     assert qry.is_valid_id(country_id)
-    
+
     # Verify it was created
     country = qry.get(country_id)
     assert country[qry.NAME] == 'Test Canada'
     assert country[qry.CODE] == unique_code
-    
+
     qry.delete(country_id)
 
 
@@ -123,7 +125,7 @@ def test_update_valid(temp_country):
     }
     result = qry.update(temp_country, update_data)
     assert result == temp_country
-    
+
     # Verify update
     country = qry.get(temp_country)
     assert country[qry.NAME] == 'Updated Country Name'
@@ -152,10 +154,10 @@ def test_update_invalid_population():
     """Test updating with non-integer population raises ValueError."""
     temp_rec = get_temp_rec()
     country_id = qry.create(temp_rec)
-    
+
     with pytest.raises(ValueError):
         qry.update(country_id, {qry.POPULATION: 'not an integer'})
-    
+
     qry.delete(country_id)
 
 
@@ -163,7 +165,7 @@ def test_delete_valid(temp_country):
     """Test deleting a country."""
     result = qry.delete(temp_country)
     assert result >= 1
-    
+
     # Verify it's deleted
     with pytest.raises(KeyError):
         qry.get(temp_country)
@@ -191,16 +193,16 @@ def test_get_by_code():
         qry.POPULATION: 128000000
     }
     country_id = qry.create(country_data)
-    
+
     # Get by code
     country = qry.get_by_code(unique_code)
     assert country[qry.NAME] == 'Test Mexico'
     assert country[qry.CODE] == unique_code
-    
+
     # Test case-insensitive
     country = qry.get_by_code(unique_code.lower())
     assert country[qry.NAME] == 'Test Mexico'
-    
+
     qry.delete(country_id)
 
 
@@ -220,29 +222,30 @@ def test_code_exists():
         qry.POPULATION: 126000000
     }
     country_id = qry.create(country_data)
-    
+
     assert qry.code_exists(unique_code) is True
     assert qry.code_exists(unique_code.lower()) is True  # case-insensitive
     assert qry.code_exists('NONEXISTENT') is False
-    
+
     qry.delete(country_id)
 
 
 def test_num_countries():
     """Test counting countries."""
     initial_count = qry.num_countries()
-    
+
     unique_code = f'N{uuid.uuid4().hex[:3].upper()}'
     country_data = {
         qry.NAME: 'Test Country',
         qry.CODE: unique_code
     }
     country_id = qry.create(country_data)
-    
+
     assert qry.num_countries() == initial_count + 1
-    
+
     qry.delete(country_id)
     assert qry.num_countries() == initial_count
+
 
 def test_search_by_continent():
     unique_code = f'F{uuid.uuid4().hex[:3].upper()}'
@@ -257,10 +260,10 @@ def test_search_by_continent():
     assert any(r[qry.CODE] == unique_code for r in results)
 
     qry.delete(cid)
-    
+
+
 @patch('data.db_connect.read', side_effect=Exception('Connection failed'))
 @patch('data.db_connect.connect_db', return_value=True)
 def test_read_connection_error(mock_connect, mock_read):
     with pytest.raises(Exception):
-        countries = qry.read()
-
+        qry.read()

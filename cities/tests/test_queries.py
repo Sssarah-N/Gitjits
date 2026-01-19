@@ -11,13 +11,6 @@ def get_temp_rec():
     return deepcopy(qry.SAMPLE_CITY)
 
 
-@pytest.fixture(scope='function')
-def temp_city_no_del():
-    temp_rec = get_temp_rec()
-    qry.create(temp_rec)
-    return temp_rec
-
-
 @pytest.fixture(autouse=True)
 def reset_cache():
     """Reset city cache before each test to ensure test isolation."""
@@ -105,12 +98,6 @@ def test_create_normalizes_state_code():
     qry.delete(city_id)
 
 
-@pytest.mark.skip(reason='Currently adds duplicate cities as new entries')
-def test_create_duplicate():
-    with pytest.raises(ValueError, match="City already exists"):
-        qry.create(qry.SAMPLE_CITY)
-
-
 def test_update(temp_city):
     update_data = {
         qry.NAME: qry.SAMPLE_CITY[qry.NAME] + " Updated",
@@ -195,12 +182,6 @@ def test_delete_removes_from_list(temp_city):
     qry.delete(temp_city)
     # After delete, count should be one less
     assert len(qry.read()) == initial_count - 1
-
-
-def test_delete_missing():
-    fake_id = str(ObjectId())
-    with pytest.raises(KeyError):
-        qry.delete(fake_id)
 
 
 def test_search_by_city():

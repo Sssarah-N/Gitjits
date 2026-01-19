@@ -22,13 +22,6 @@ def get_temp_rec():
     return rec
 
 
-@pytest.fixture(scope='function')
-def temp_country_no_del():
-    temp_rec = get_temp_rec()
-    qry.create(temp_rec)
-    return temp_rec
-
-
 @pytest.fixture(autouse=True)
 def reset_cache():
     """Reset country cache before each test to ensure test isolation."""

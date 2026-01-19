@@ -42,18 +42,14 @@ STATISTICS_RESP = 'Statistics'
 CITIES_EPS = '/cities'
 CITIES_RESP = 'Cities'
 CITY_RESP = 'City'
-CITY_ID = 'city_id'
-CITIES_BY_STATE_EP = '/cities/by-state/<state_code>'
 
 STATES_EPS = '/states'
 STATES_RESP = 'States'
 STATE_RESP = 'State'
-STATE_ID = 'state_id'
 
 COUNTRIES_EPS = '/countries'
 COUNTRIES_RESP = 'Countries'
 COUNTRY_RESP = 'Country'
-COUNTRY_ID = 'country_id'
 
 MESSAGE = 'Message'
 ERROR = 'Error'
@@ -101,32 +97,31 @@ class Cities(Resource):
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
         city_id = cqry.create(data)
-        return {'Cities': {'city_id': city_id}}
+        return {'Cities': {'_id': city_id}}, 201
 
 
 @cities_ns.route('/<city_id>')
 class City(Resource):
-    """Operations on individual cities."""
+    """Operations on individual cities by MongoDB ObjectId."""
 
     @api.doc(params={'city_id': 'MongoDB ObjectId'})
     @api.response(200, 'Success', models['city'])
     @handle_errors
     def get(self, city_id):
-        """Get a city by ID."""
+        """Get a city by MongoDB ObjectId."""
         return {'City': cqry.get(city_id)}
 
     @api.expect(models['city'])
     @handle_errors
     def put(self, city_id):
-        """Update a city by ID."""
+        """Update a city by MongoDB ObjectId."""
         cqry.update(city_id, request.json)
         updated = cqry.get(city_id)
-        updated['city_id'] = updated.get('id', city_id)
         return {'City': updated}
 
     @handle_errors
     def delete(self, city_id):
-        """Delete a city by ID."""
+        """Delete a city by MongoDB ObjectId."""
         cqry.delete(city_id)
         return {'Message': f'City {city_id} deleted'}
 
@@ -164,35 +159,11 @@ class States(Resource):
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
-        state_id = sqry.create(data)
-        return {'States': {'state_id': state_id}}
-
-
-@states_ns.route('/<state_id>')
-class State(Resource):
-    """Operations on individual states."""
-
-    @api.doc(params={'state_id': 'MongoDB ObjectId'})
-    @api.response(200, 'Success', models['state'])
-    @handle_errors
-    def get(self, state_id):
-        """Get a state by ID."""
-        return {'State': sqry.get(state_id)}
-
-    @api.expect(models['state'])
-    @handle_errors
-    def put(self, state_id):
-        """Update a state by ID."""
-        sqry.update(state_id, request.json)
-        updated = sqry.get(state_id)
-        updated['state_id'] = updated.get('id', state_id)
-        return {'State': updated}
-
-    @handle_errors
-    def delete(self, state_id):
-        """Delete a state by ID."""
-        sqry.delete(state_id)
-        return {'Message': f'State {state_id} deleted'}
+        state_code, country_code = sqry.create(data)
+        return {'States': {
+            'state_code': state_code,
+            'country_code': country_code
+        }}, 201
 
 
 # =============================================================================
@@ -217,35 +188,73 @@ class Countries(Resource):
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
-        country_id = coqry.create(data)
-        return {'Countries': {'country_id': country_id}}
+        code = coqry.create(data)
+        return {'Countries': {'code': code}}, 201
 
 
-@countries_ns.route('/<country_id>')
+@countries_ns.route('/<code>')
 class Country(Resource):
-    """Operations on individual countries."""
+    """Operations on individual countries by ISO code."""
 
-    @api.doc(params={'country_id': 'MongoDB ObjectId'})
+    @api.doc(params={'code': 'ISO country code (e.g., US, CA, UK)'})
     @api.response(200, 'Success', models['country'])
     @handle_errors
-    def get(self, country_id):
-        """Get a country by ID."""
-        return {'Country': coqry.get(country_id)}
+    def get(self, code):
+        """Get a country by ISO code."""
+        return {'Country': coqry.get(code)}
 
     @api.expect(models['country'])
     @handle_errors
-    def put(self, country_id):
-        """Update a country by ID."""
-        coqry.update(country_id, request.json)
-        updated = coqry.get(country_id)
-        updated['country_id'] = updated.get('id', country_id)
+    def put(self, code):
+        """Update a country by ISO code."""
+        coqry.update(code, request.json)
+        updated = coqry.get(code)
         return {'Country': updated}
 
     @handle_errors
-    def delete(self, country_id):
-        """Delete a country by ID."""
-        coqry.delete(country_id)
-        return {'Message': f'Country {country_id} deleted'}
+    def delete(self, code):
+        """Delete a country by ISO code."""
+        coqry.delete(code)
+        return {'Message': f'Country {code} deleted'}
+
+
+@countries_ns.route('/<country_code>/states')
+class StatesByCountry(Resource):
+    """Get all states in a country."""
+
+    @api.doc(params={'country_code': 'ISO country code (e.g., US, CA)'})
+    @handle_errors
+    def get(self, country_code):
+        """Get all states in a country."""
+        return {'States': sqry.get_states_by_country(country_code)}
+
+
+@countries_ns.route('/<country_code>/states/<state_code>')
+class StateByCode(Resource):
+    """Operations on individual states by composite key."""
+
+    @api.doc(params={
+        'country_code': 'ISO country code (e.g., US)',
+        'state_code': 'State/province code (e.g., NY)'
+    })
+    @handle_errors
+    def get(self, country_code, state_code):
+        """Get a state by country and state code."""
+        return {'State': sqry.get(state_code, country_code)}
+
+    @api.expect(models['state'])
+    @handle_errors
+    def put(self, country_code, state_code):
+        """Update a state by country and state code."""
+        sqry.update(state_code, country_code, request.json)
+        updated = sqry.get(state_code, country_code)
+        return {'State': updated}
+
+    @handle_errors
+    def delete(self, country_code, state_code):
+        """Delete a state by country and state code."""
+        sqry.delete(state_code, country_code)
+        return {'Message': f'State {state_code} in {country_code} deleted'}
 
 
 # =============================================================================
@@ -311,21 +320,24 @@ class DeleteAllData(Resource):
 
         for city in cqry.read():
             try:
-                cqry.delete(city.get('id'))
+                cqry.delete(city.get('_id'))
                 counts['cities'] += 1
             except Exception:
                 pass
 
         for state in sqry.read():
             try:
-                sqry.delete(state.get('id'))
+                sqry.delete(
+                    state.get('state_code'),
+                    state.get('country_code')
+                )
                 counts['states'] += 1
             except Exception:
                 pass
 
         for country in coqry.read():
             try:
-                coqry.delete(country.get('id'))
+                coqry.delete(country.get('code'))
                 counts['countries'] += 1
             except Exception:
                 pass

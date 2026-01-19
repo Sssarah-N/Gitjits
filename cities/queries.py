@@ -1,16 +1,13 @@
 """
 This file deals with our city-level data.
+Uses MongoDB _id as the primary key (cities don't have a natural key).
 """
-from random import randint
-
 from bson import ObjectId
 import data.db_connect as dbc
 
-MIN_ID_LEN = 1
-
 CITY_COLLECTION = 'cities'
 
-ID = 'id'
+MONGO_ID = '_id'
 NAME = 'name'
 STATE_CODE = 'state_code'
 
@@ -22,32 +19,16 @@ SAMPLE_CITY = {
     STATE_CODE: 'NY'
 }
 
-city_cache = {
-    '1': SAMPLE_CITY,
-}
-
-
-def db_connect(success_ratio: int) -> bool:
-    """
-    Return True if connected, False if not.
-    """
-    return randint(1, success_ratio) % success_ratio
+city_cache = {}
 
 
 def is_valid_id(_id: str) -> bool:
     """
-    Since flask treat http request as text,
-    everything is passed in as a string by default,
-    therefore nothing would be an invalid id for now.
-    Empty string returns false,
-    but that redirects the page so it won't get tested.
-    #needs attention or resolve.
+    Validate MongoDB ObjectId format.
     """
     if not isinstance(_id, str):
         return False
-    if len(_id) < MIN_ID_LEN:
-        return False
-    return True
+    return ObjectId.is_valid(_id)
 
 
 def is_valid_state_code(state_code: str) -> bool:
@@ -108,7 +89,7 @@ def create(flds: dict):
             (US state, Canadian province, etc.)
 
     Returns:
-        New city ID as string
+        New city ID as string (MongoDB ObjectId)
 
     Raises:
         ValueError: If validation fails
@@ -125,9 +106,14 @@ def create(flds: dict):
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
 
+    # Validate and normalize state_code if provided
+    if flds.get(STATE_CODE):
+        if not is_valid_state_code(flds[STATE_CODE]):
+            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
+        flds[STATE_CODE] = flds[STATE_CODE].upper()
+
     new_id = dbc.create(CITY_COLLECTION, flds)
     print(f'{new_id=}')
-    dbc.update(CITY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
     return new_id
 
 
@@ -136,7 +122,7 @@ def update(city_id: str, flds: dict):
     Update an existing city with validation (international support).
 
     Args:
-        city_id: ID of the city to update
+        city_id: MongoDB ObjectId as string
         flds: Dictionary with fields to update (name, state_code)
             state_code can be any region identifier
 
@@ -153,7 +139,15 @@ def update(city_id: str, flds: dict):
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
 
-    updated = dbc.update(CITY_COLLECTION, {ID: city_id}, flds)
+    # Validate and normalize state_code if provided
+    if flds.get(STATE_CODE):
+        if not is_valid_state_code(flds[STATE_CODE]):
+            raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
+        flds[STATE_CODE] = flds[STATE_CODE].upper()
+
+    updated = dbc.update(
+        CITY_COLLECTION, {MONGO_ID: ObjectId(city_id)}, flds
+    )
 
     if not updated or getattr(updated, 'matched_count', 0) < 1:
         raise KeyError(f'City not found: {city_id}')
@@ -161,20 +155,20 @@ def update(city_id: str, flds: dict):
 
 
 def get(city_id: str) -> dict:
-    """Retrieve a city by ID."""
+    """Retrieve a city by MongoDB ObjectId."""
     if not is_valid_id(city_id):
         raise ValueError(f'Invalid ID: {city_id}')
-    city = dbc.read_one(CITY_COLLECTION, {ID: city_id})
+    city = dbc.read_one(CITY_COLLECTION, {MONGO_ID: ObjectId(city_id)})
     if not city:
         raise KeyError(f'City not found: {city_id}')
     return city
 
 
 def delete(city_id: str):
-    """Delete a city by ID."""
+    """Delete a city by MongoDB ObjectId."""
     if not is_valid_id(city_id):
         raise ValueError(f'Invalid ID: {city_id}')
-    ret = dbc.delete(CITY_COLLECTION, {ID: city_id})
+    ret = dbc.delete(CITY_COLLECTION, {MONGO_ID: ObjectId(city_id)})
     if ret < 1:
         raise KeyError(f'City not found: {city_id}')
     return ret

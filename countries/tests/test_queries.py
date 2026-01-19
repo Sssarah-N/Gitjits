@@ -7,11 +7,18 @@ from unittest.mock import patch
 from countries import queries as qry
 
 
+def get_unique_code():
+    """Generate a unique 2-3 letter code (letters only)."""
+    letters = ''.join(c for c in uuid.uuid4().hex.upper() if c.isalpha())[:2]
+    if len(letters) < 2:
+        letters = 'XY'
+    return f'T{letters}'[:3]
+
+
 def get_temp_rec():
     """Get a temp record with a unique code to avoid conflicts."""
     rec = deepcopy(qry.SAMPLE_COUNTRY)
-    # Use unique code to avoid duplicate conflicts
-    rec[qry.CODE] = f'T{uuid.uuid4().hex[:4].upper()}'
+    rec[qry.CODE] = get_unique_code()
     return rec
 
 
@@ -31,29 +38,39 @@ def reset_cache():
 
 @pytest.fixture(scope='function')
 def temp_country():
+    """Create a temp country and return its code (the primary key)."""
     temp_rec = get_temp_rec()
-    new_rec_id = qry.create(temp_rec)
-    yield new_rec_id
+    code = qry.create(temp_rec)
+    yield code
     try:
-        qry.delete(new_rec_id)
+        qry.delete(code)
     except (ValueError, KeyError):
         print('The record was already deleted.')
 
 
-def test_valid_id_min_length():
-    short_id = "." * (qry.MIN_ID_LEN - 1)
-    result = qry.is_valid_id(short_id)
-    assert not result
+def test_valid_code_format():
+    """Test country code validation."""
+    # Valid codes (2-3 letters)
+    assert qry.is_valid_code('US') is True
+    assert qry.is_valid_code('USA') is True
+    assert qry.is_valid_code('uk') is True  # lowercase ok
+
+    # Invalid codes
+    assert qry.is_valid_code('') is False       # empty
+    assert qry.is_valid_code('A') is False      # too short
+    assert qry.is_valid_code('ABCD') is False   # too long
+    assert qry.is_valid_code('U1') is False     # contains number
+    assert qry.is_valid_code(123) is False      # not a string
 
 
 def test_good_create():
     old_count = qry.num_countries()
     temp_rec = get_temp_rec()
-    new_rec_id = qry.create(temp_rec)
-    assert qry.is_valid_id(new_rec_id)
+    code = qry.create(temp_rec)
+    assert qry.is_valid_code(code)
     assert qry.num_countries() > old_count
 
-    qry.delete(new_rec_id)
+    qry.delete(code)
     # Verify the deleted country is gone and count returned to original
     assert qry.num_countries() == old_count
 
@@ -74,12 +91,24 @@ def test_create_bad_type():
 def test_create_missing_name():
     """Test creating without name raises ValueError."""
     with pytest.raises(ValueError):
-        qry.create({'code': 'XX'})
+        qry.create({qry.CODE: 'XX'})
+
+
+def test_create_missing_code():
+    """Test creating without code raises ValueError."""
+    with pytest.raises(ValueError):
+        qry.create({qry.NAME: 'Test Country'})
+
+
+def test_create_invalid_code_format():
+    """Test creating with invalid code format raises ValueError."""
+    with pytest.raises(ValueError):
+        qry.create({qry.NAME: 'Test', qry.CODE: 'TOOLONG'})
 
 
 def test_create_with_all_fields():
     """Test creating a country with all fields."""
-    unique_code = f'C{uuid.uuid4().hex[:3].upper()}'
+    unique_code = get_unique_code()
     country_data = {
         qry.NAME: 'Test Canada',
         qry.CODE: unique_code,
@@ -87,32 +116,56 @@ def test_create_with_all_fields():
         qry.POPULATION: 38000000,
         qry.CONTINENT: 'North America'
     }
-    country_id = qry.create(country_data)
-    assert qry.is_valid_id(country_id)
+    code = qry.create(country_data)
+    assert qry.is_valid_code(code)
+    assert code == unique_code.upper()
 
     # Verify it was created
-    country = qry.get(country_id)
+    country = qry.get(code)
     assert country[qry.NAME] == 'Test Canada'
-    assert country[qry.CODE] == unique_code
+    assert country[qry.CODE] == unique_code.upper()
 
-    qry.delete(country_id)
+    qry.delete(code)
+
+
+def test_create_duplicate_code():
+    """Test creating duplicate country code raises ValueError."""
+    temp_rec = get_temp_rec()
+    code = qry.create(temp_rec)
+
+    # Try to create another with same code
+    duplicate_rec = {
+        qry.NAME: 'Another Country',
+        qry.CODE: code
+    }
+    with pytest.raises(ValueError):
+        qry.create(duplicate_rec)
+
+    qry.delete(code)
 
 
 def test_get_valid(temp_country):
-    """Test getting a country by ID."""
+    """Test getting a country by code."""
     country = qry.get(temp_country)
     assert isinstance(country, dict)
     assert qry.NAME in country
 
 
+def test_get_case_insensitive(temp_country):
+    """Test that get() is case-insensitive."""
+    country_upper = qry.get(temp_country.upper())
+    country_lower = qry.get(temp_country.lower())
+    assert country_upper[qry.NAME] == country_lower[qry.NAME]
+
+
 def test_get_not_found():
     """Test getting non-existent country raises KeyError."""
     with pytest.raises(KeyError):
-        qry.get('nonexistent_id_12345')
+        qry.get('ZZ')  # ZZ is not a real ISO code
 
 
-def test_get_invalid_id():
-    """Test getting with invalid ID raises ValueError."""
+def test_get_invalid_code():
+    """Test getting with invalid code raises ValueError."""
     with pytest.raises(ValueError):
         qry.get('')
 
@@ -124,7 +177,7 @@ def test_update_valid(temp_country):
         qry.POPULATION: 50000000
     }
     result = qry.update(temp_country, update_data)
-    assert result == temp_country
+    assert result == temp_country.upper()
 
     # Verify update
     country = qry.get(temp_country)
@@ -132,14 +185,25 @@ def test_update_valid(temp_country):
     assert country[qry.POPULATION] == 50000000
 
 
+def test_update_cannot_change_code(temp_country):
+    """Test that updating code field is ignored (primary key cannot change)."""
+    original = qry.get(temp_country)
+    qry.update(temp_country, {qry.CODE: 'ZZ', qry.NAME: 'New Name'})
+    updated = qry.get(temp_country)
+    # Code should not have changed
+    assert updated[qry.CODE] == original[qry.CODE]
+    # But name should have changed
+    assert updated[qry.NAME] == 'New Name'
+
+
 def test_update_not_found():
     """Test updating non-existent country raises KeyError."""
     with pytest.raises(KeyError):
-        qry.update('nonexistent_id_12345', {qry.NAME: 'Test'})
+        qry.update('ZZ', {qry.NAME: 'Test'})
 
 
-def test_update_invalid_id():
-    """Test updating with invalid ID raises ValueError."""
+def test_update_invalid_code():
+    """Test updating with invalid code raises ValueError."""
     with pytest.raises(ValueError):
         qry.update('', {qry.NAME: 'Test'})
 
@@ -147,18 +211,18 @@ def test_update_invalid_id():
 def test_update_bad_type():
     """Test updating with non-dict raises ValueError."""
     with pytest.raises(ValueError):
-        qry.update('some_id', 'not a dict')
+        qry.update('US', 'not a dict')
 
 
 def test_update_invalid_population():
     """Test updating with non-integer population raises ValueError."""
     temp_rec = get_temp_rec()
-    country_id = qry.create(temp_rec)
+    code = qry.create(temp_rec)
 
     with pytest.raises(ValueError):
-        qry.update(country_id, {qry.POPULATION: 'not an integer'})
+        qry.update(code, {qry.POPULATION: 'not an integer'})
 
-    qry.delete(country_id)
+    qry.delete(code)
 
 
 def test_delete_valid(temp_country):
@@ -174,92 +238,63 @@ def test_delete_valid(temp_country):
 def test_delete_not_found():
     """Test deleting non-existent country raises KeyError."""
     with pytest.raises(KeyError):
-        qry.delete('nonexistent_id_12345')
+        qry.delete('ZZ')
 
 
-def test_delete_invalid_id():
-    """Test deleting with invalid ID raises ValueError."""
+def test_delete_invalid_code():
+    """Test deleting with invalid code raises ValueError."""
     with pytest.raises(ValueError):
         qry.delete('')
 
 
-def test_get_by_code():
-    """Test getting country by code."""
-    unique_code = f'M{uuid.uuid4().hex[:3].upper()}'
-    country_data = {
-        qry.NAME: 'Test Mexico',
-        qry.CODE: unique_code,
-        qry.CAPITAL: 'Mexico City',
-        qry.POPULATION: 128000000
-    }
-    country_id = qry.create(country_data)
-
-    # Get by code
-    country = qry.get_by_code(unique_code)
-    assert country[qry.NAME] == 'Test Mexico'
-    assert country[qry.CODE] == unique_code
-
-    # Test case-insensitive
-    country = qry.get_by_code(unique_code.lower())
-    assert country[qry.NAME] == 'Test Mexico'
-
-    qry.delete(country_id)
-
-
-def test_get_by_code_not_found():
-    """Test getting by non-existent code raises KeyError."""
-    with pytest.raises(KeyError):
-        qry.get_by_code('NONEXISTENT')
-
-
 def test_code_exists():
     """Test checking if country code exists."""
-    unique_code = f'J{uuid.uuid4().hex[:3].upper()}'
+    unique_code = get_unique_code()
     country_data = {
         qry.NAME: 'Test Japan',
         qry.CODE: unique_code,
         qry.CAPITAL: 'Tokyo',
         qry.POPULATION: 126000000
     }
-    country_id = qry.create(country_data)
+    code = qry.create(country_data)
 
     assert qry.code_exists(unique_code) is True
     assert qry.code_exists(unique_code.lower()) is True  # case-insensitive
-    assert qry.code_exists('NONEXISTENT') is False
+    assert qry.code_exists('ZZ') is False
 
-    qry.delete(country_id)
+    qry.delete(code)
 
 
 def test_num_countries():
     """Test counting countries."""
     initial_count = qry.num_countries()
 
-    unique_code = f'N{uuid.uuid4().hex[:3].upper()}'
+    unique_code = get_unique_code()
     country_data = {
         qry.NAME: 'Test Country',
         qry.CODE: unique_code
     }
-    country_id = qry.create(country_data)
+    code = qry.create(country_data)
 
     assert qry.num_countries() == initial_count + 1
 
-    qry.delete(country_id)
+    qry.delete(code)
     assert qry.num_countries() == initial_count
 
 
 def test_search_by_continent():
-    unique_code = f'F{uuid.uuid4().hex[:3].upper()}'
+    unique_code = get_unique_code()
     rec = {
         qry.NAME: "Test France",
         qry.CODE: unique_code,
         qry.CONTINENT: "Europe"
     }
-    cid = qry.create(rec)
+    code = qry.create(rec)
 
     results = qry.search({qry.CONTINENT: "Europe"})
-    assert any(r[qry.CODE] == unique_code for r in results)
+    assert any(r[qry.CODE] == unique_code.upper() for r in results)
 
-    qry.delete(cid)
+    qry.delete(code)
 
 
 @patch('data.db_connect.read', side_effect=Exception('Connection failed'))

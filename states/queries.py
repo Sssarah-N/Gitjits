@@ -1,25 +1,20 @@
 """
 This file deals with our state-level data.
+Uses composite key: state_code + country_code as the natural primary key.
 """
-from bson import ObjectId
 import data.db_connect as dbc
-
-MONGO_ID = '_id'
-
-MIN_ID_LEN = 1
 
 STATE_COLLECTION = 'states'
 
-ID = 'id'
+# Composite primary key
+STATE_CODE = 'state_code'   # e.g., 'NY', 'CA', 'ON'
+COUNTRY_CODE = 'country_code'  # e.g., 'US', 'CA', 'MX'
+
 NAME = 'name'
-# Composite key with country_code (e.g., 'NY', 'CA', 'ON')
-STATE_CODE = 'state_code'
 CAPITAL = 'capital'
 POPULATION = 'population'
 LATITUDE = 'latitude'
 LONGITUDE = 'longitude'
-# Composite key with state_code (e.g., 'US', 'CA', 'MX')
-COUNTRY_CODE = 'country_code'
 
 SAMPLE_STATE = {
     NAME: 'New York',
@@ -29,18 +24,30 @@ SAMPLE_STATE = {
     POPULATION: 19450000
 }
 
-state_cache = {
-    '1': SAMPLE_STATE,
-}
+state_cache = {}
 
 
-def is_valid_id(_id: str) -> bool:
+def is_valid_state_code(code: str) -> bool:
     """
-    Validate ID format.
+    Validate state code format.
+    State codes are typically 2-10 alphanumeric characters.
     """
-    if not isinstance(_id, str):
+    if not isinstance(code, str):
         return False
-    if len(_id) < MIN_ID_LEN:
+    code = code.strip()
+    if len(code) < 1 or len(code) > 10:
+        return False
+    return True
+
+
+def is_valid_country_code(code: str) -> bool:
+    """Validate country code format."""
+    if not isinstance(code, str):
+        return False
+    code = code.strip()
+    if len(code) < 2 or len(code) > 3:
+        return False
+    if not code.isalpha():
         return False
     return True
 
@@ -53,6 +60,15 @@ def create(flds: dict, reload=True):
     """
     Create a new state.
 
+    Args:
+        flds: Dictionary with required fields:
+            - name: State name
+            - state_code: State code (e.g., 'NY')
+            - country_code: Country code (e.g., 'US')
+
+    Returns:
+        Tuple of (state_code, country_code) - the composite primary key
+
     Raises:
         ValueError: If validation fails (bad type, missing name,
             invalid fields, country doesn't exist, or
@@ -64,6 +80,19 @@ def create(flds: dict, reload=True):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
+    if not flds.get(STATE_CODE):
+        raise ValueError('State code is required')
+    if not flds.get(COUNTRY_CODE):
+        raise ValueError('Country code is required')
+    if not is_valid_state_code(flds[STATE_CODE]):
+        raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
+    if not is_valid_country_code(flds[COUNTRY_CODE]):
+        raise ValueError(f'Invalid country code format: {flds[COUNTRY_CODE]}')
+
+    # Normalize codes to uppercase
+    flds[STATE_CODE] = flds[STATE_CODE].upper()
+    flds[COUNTRY_CODE] = flds[COUNTRY_CODE].upper()
+
     if LATITUDE in flds:
         lat = flds[LATITUDE]
         if not isinstance(lat, (int, float)) or not (-90 <= lat <= 90):
@@ -77,46 +106,46 @@ def create(flds: dict, reload=True):
                 f'Longitude must be between -180 and 180, got {lon}'
             )
 
-    # Validate country exists if country_code provided
-    if flds.get(COUNTRY_CODE):
-        import countries.queries as countries_qry
-        if not countries_qry.code_exists(flds[COUNTRY_CODE]):
-            raise ValueError(
-                f'Country with code {flds[COUNTRY_CODE]} does not exist'
-            )
+    # Validate country exists
+    import countries.queries as countries_qry
+    if not countries_qry.code_exists(flds[COUNTRY_CODE]):
+        raise ValueError(
+            f'Country with code {flds[COUNTRY_CODE]} does not exist'
+        )
 
     # Check for duplicate state_code + country_code combination
-    if flds.get(STATE_CODE) and flds.get(COUNTRY_CODE):
-        if state_exists(flds[STATE_CODE], flds[COUNTRY_CODE]):
-            raise ValueError(
-                f'State {flds[STATE_CODE]} already exists in '
-                f'country {flds[COUNTRY_CODE]}'
-            )
+    if state_exists(flds[STATE_CODE], flds[COUNTRY_CODE]):
+        raise ValueError(
+            f'State {flds[STATE_CODE]} already exists in '
+            f'country {flds[COUNTRY_CODE]}'
+        )
 
-    new_id = dbc.create(STATE_COLLECTION, flds)
+    dbc.create(STATE_COLLECTION, flds)
     if reload:
         load_cache()
-    dbc.update(STATE_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
-    return new_id
+    return (flds[STATE_CODE], flds[COUNTRY_CODE])
 
 
-def update(state_id: str, flds: dict):
+def update(state_code: str, country_code: str, flds: dict):
     """
     Update an existing state.
 
     Args:
-        state_id: ID of the state to update
+        state_code: State code (e.g., 'NY')
+        country_code: Country code (e.g., 'US')
         flds: Dictionary with fields to update
 
     Returns:
-        The state ID
+        Tuple of (state_code, country_code)
 
     Raises:
-        ValueError: If validation fails (bad ID or bad type)
+        ValueError: If validation fails
         KeyError: If state not found
     """
-    if not is_valid_id(state_id):
-        raise ValueError(f'Invalid ID: {state_id}')
+    if not is_valid_state_code(state_code):
+        raise ValueError(f'Invalid state code: {state_code}')
+    if not is_valid_country_code(country_code):
+        raise ValueError(f'Invalid country code: {country_code}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
     if POPULATION in flds and not isinstance(flds[POPULATION], int):
@@ -137,30 +166,50 @@ def update(state_id: str, flds: dict):
                 f'Longitude must be between -180 and 180, got {lon}'
             )
 
-    updated = dbc.update(STATE_COLLECTION, {ID: state_id}, flds)
+    # Don't allow changing the primary key
+    if STATE_CODE in flds:
+        del flds[STATE_CODE]
+    if COUNTRY_CODE in flds:
+        del flds[COUNTRY_CODE]
+
+    updated = dbc.update(
+        STATE_COLLECTION,
+        {STATE_CODE: state_code.upper(), COUNTRY_CODE: country_code.upper()},
+        flds
+    )
 
     if not updated or getattr(updated, 'matched_count', 0) < 1:
-        raise KeyError(f'State not found: {state_id}')
-    return state_id
+        raise KeyError(f'State not found: {state_code} in {country_code}')
+    return (state_code.upper(), country_code.upper())
 
 
-def get(state_id: str) -> dict:
-    """Retrieve a state by ID."""
-    if not is_valid_id(state_id):
-        raise ValueError(f'Invalid ID: {state_id}')
-    state = dbc.read_one(STATE_COLLECTION, {ID: state_id})
+def get(state_code: str, country_code: str) -> dict:
+    """Retrieve a state by composite key."""
+    if not is_valid_state_code(state_code):
+        raise ValueError(f'Invalid state code: {state_code}')
+    if not is_valid_country_code(country_code):
+        raise ValueError(f'Invalid country code: {country_code}')
+    state = dbc.read_one(STATE_COLLECTION, {
+        STATE_CODE: state_code.upper(),
+        COUNTRY_CODE: country_code.upper()
+    })
     if not state:
-        raise KeyError(f'State not found: {state_id}')
+        raise KeyError(f'State not found: {state_code} in {country_code}')
     return state
 
 
-def delete(state_id: str):
-    """Delete a state by ID."""
-    if not is_valid_id(state_id):
-        raise ValueError(f'Invalid ID: {state_id}')
-    ret = dbc.delete(STATE_COLLECTION, {ID: state_id})
+def delete(state_code: str, country_code: str):
+    """Delete a state by composite key."""
+    if not is_valid_state_code(state_code):
+        raise ValueError(f'Invalid state code: {state_code}')
+    if not is_valid_country_code(country_code):
+        raise ValueError(f'Invalid country code: {country_code}')
+    ret = dbc.delete(STATE_COLLECTION, {
+        STATE_CODE: state_code.upper(),
+        COUNTRY_CODE: country_code.upper()
+    })
     if ret < 1:
-        raise KeyError(f'State not found: {state_id}')
+        raise KeyError(f'State not found: {state_code} in {country_code}')
     return ret
 
 
@@ -231,29 +280,6 @@ def state_exists(state_code: str, country_code: str) -> bool:
         STATE_CODE: state_code.upper(),
         COUNTRY_CODE: country_code.upper()
     })
-
-
-def get_by_code(state_code: str, country_code: str) -> dict:
-    """
-    Get a state by its state code and country code.
-
-    Args:
-        state_code: State/province code (e.g., 'NY', 'ON')
-        country_code: Country code (e.g., 'US', 'CA')
-
-    Returns:
-        State dict
-
-    Raises:
-        KeyError: If state not found
-    """
-    state = dbc.read_one(STATE_COLLECTION, {
-        STATE_CODE: state_code.upper(),
-        COUNTRY_CODE: country_code.upper()
-    })
-    if not state:
-        raise KeyError(f'State not found: {state_code} in {country_code}')
-    return state
 
 
 def get_states_by_country(country_code: str) -> list:

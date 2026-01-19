@@ -1,16 +1,14 @@
 """
 This file deals with our country-level data.
+Uses 'code' (ISO country code) as the natural primary key.
 """
-from bson import ObjectId
 import data.db_connect as dbc
-
-MIN_ID_LEN = 1
 
 COUNTRY_COLLECTION = 'countries'
 
-ID = 'id'
+# Primary key - ISO country code (e.g., 'US', 'CA', 'UK')
+CODE = 'code'
 NAME = 'name'
-CODE = 'code'  # ISO country code (e.g., 'US', 'CA', 'UK')
 CAPITAL = 'capital'
 POPULATION = 'population'
 CONTINENT = 'continent'
@@ -23,18 +21,20 @@ SAMPLE_COUNTRY = {
     CONTINENT: 'North America'
 }
 
-country_cache = {
-    '1': SAMPLE_COUNTRY,
-}
+country_cache = {}
 
 
-def is_valid_id(_id: str) -> bool:
+def is_valid_code(code: str) -> bool:
     """
-    Validate ID format.
+    Validate country code format.
+    ISO country codes are typically 2-3 uppercase letters.
     """
-    if not isinstance(_id, str):
+    if not isinstance(code, str):
         return False
-    if len(_id) < MIN_ID_LEN:
+    code = code.strip()
+    if len(code) < 2 or len(code) > 3:
+        return False
+    if not code.isalpha():
         return False
     return True
 
@@ -48,19 +48,18 @@ def create(flds: dict, reload=True):
     Create a new country.
 
     Args:
-        flds: Dictionary with 'name' (required) and optional fields:
-            - code: ISO country code (e.g., 'US', 'CA', 'UK')
+        flds: Dictionary with 'name' and 'code' (both required) and optional:
             - capital: Capital city name
             - population: Country population
             - continent: Continent name
         reload: If True, reload the cache after creating (default: True)
 
     Returns:
-        New country ID as string
+        Country code as string (the natural primary key)
 
     Raises:
         ValueError: If validation fails
-            (bad type, missing name, invalid fields)
+            (bad type, missing name/code, invalid fields)
     """
     dbc.connect_db()
     print(f'{flds=}')
@@ -68,6 +67,13 @@ def create(flds: dict, reload=True):
         raise ValueError(f'Bad type for {type(flds)=}')
     if not flds.get(NAME):
         raise ValueError(f'Bad value for {flds.get(NAME)=}')
+    if not flds.get(CODE):
+        raise ValueError('Country code is required')
+    if not is_valid_code(flds[CODE]):
+        raise ValueError(f'Invalid country code format: {flds[CODE]}')
+
+    # Normalize code to uppercase
+    flds[CODE] = flds[CODE].upper()
 
     # Validate population if provided
     if POPULATION in flds and flds[POPULATION] is not None:
@@ -78,35 +84,32 @@ def create(flds: dict, reload=True):
             )
 
     # Check for duplicate country code
-    if flds.get(CODE):
-        if code_exists(flds[CODE]):
-            raise ValueError(f'Country with code {flds[CODE]} already exists')
+    if code_exists(flds[CODE]):
+        raise ValueError(f'Country with code {flds[CODE]} already exists')
 
-    new_id = dbc.create(COUNTRY_COLLECTION, flds)
-    print(f'{new_id=}')
-    dbc.update(COUNTRY_COLLECTION, {'_id': ObjectId(new_id)}, {'id': new_id})
+    dbc.create(COUNTRY_COLLECTION, flds)
     if reload:
         load_cache()
-    return new_id
+    return flds[CODE]
 
 
-def update(country_id: str, flds: dict):
+def update(code: str, flds: dict):
     """
     Update an existing country.
 
     Args:
-        country_id: ID of the country to update
+        code: Country code (e.g., 'US', 'CA')
         flds: Dictionary with fields to update
 
     Returns:
-        The country ID
+        The country code
 
     Raises:
-        ValueError: If validation fails (bad ID or bad type)
+        ValueError: If validation fails (bad code or bad type)
         KeyError: If country not found
     """
-    if not is_valid_id(country_id):
-        raise ValueError(f'Invalid ID: {country_id}')
+    if not is_valid_code(code):
+        raise ValueError(f'Invalid country code: {code}')
     if not isinstance(flds, dict):
         raise ValueError(f'Bad type for {type(flds)=}')
 
@@ -118,30 +121,34 @@ def update(country_id: str, flds: dict):
                 f'got {type(flds[POPULATION]).__name__}'
             )
 
-    updated = dbc.update(COUNTRY_COLLECTION, {ID: country_id}, flds)
+    # Don't allow changing the primary key
+    if CODE in flds:
+        del flds[CODE]
+
+    updated = dbc.update(COUNTRY_COLLECTION, {CODE: code.upper()}, flds)
 
     if not updated or getattr(updated, 'matched_count', 0) < 1:
-        raise KeyError(f'Country not found: {country_id}')
-    return country_id
+        raise KeyError(f'Country not found: {code}')
+    return code.upper()
 
 
-def get(country_id: str) -> dict:
-    """Retrieve a country by ID."""
-    if not is_valid_id(country_id):
-        raise ValueError(f'Invalid ID: {country_id}')
-    country = dbc.read_one(COUNTRY_COLLECTION, {ID: country_id})
+def get(code: str) -> dict:
+    """Retrieve a country by code."""
+    if not is_valid_code(code):
+        raise ValueError(f'Invalid country code: {code}')
+    country = dbc.read_one(COUNTRY_COLLECTION, {CODE: code.upper()})
     if not country:
-        raise KeyError(f'Country not found: {country_id}')
+        raise KeyError(f'Country not found: {code}')
     return country
 
 
-def delete(country_id: str):
-    """Delete a country by ID."""
-    if not is_valid_id(country_id):
-        raise ValueError(f'Invalid ID: {country_id}')
-    ret = dbc.delete(COUNTRY_COLLECTION, {ID: country_id})
+def delete(code: str):
+    """Delete a country by code."""
+    if not is_valid_code(code):
+        raise ValueError(f'Invalid country code: {code}')
+    ret = dbc.delete(COUNTRY_COLLECTION, {CODE: code.upper()})
     if ret < 1:
-        raise KeyError(f'Country not found: {country_id}')
+        raise KeyError(f'Country not found: {code}')
     return ret
 
 
@@ -150,31 +157,12 @@ def read() -> list:
     return dbc.read(COUNTRY_COLLECTION)
 
 
-def get_by_code(code: str) -> dict:
-    """
-    Get a country by its country code.
-
-    Args:
-        code: Country code (e.g., 'US', 'CA', 'UK')
-
-    Returns:
-        Country dict
-
-    Raises:
-        KeyError: If country not found
-    """
-    country = dbc.read_one(COUNTRY_COLLECTION, {CODE: code.upper()})
-    if not country:
-        raise KeyError(f'Country not found with code: {code}')
-    return country
-
-
 def code_exists(code: str) -> bool:
     """Check if a country code exists."""
     try:
-        get_by_code(code)
+        get(code)
         return True
-    except KeyError:
+    except (KeyError, ValueError):
         return False
 
 

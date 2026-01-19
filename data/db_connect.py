@@ -183,22 +183,24 @@ def ensure_indexes(db=GEO_DB):
     """
     Create indexes for all collections to improve query performance.
     Safe to call multiple times - MongoDB ignores duplicate index creation.
-    """
-    # Countries indexes
-    client[db]['countries'].create_index('id', unique=True)
-    client[db]['countries'].create_index('code', unique=True, sparse=True)
 
-    # States indexes - composite unique on state_code + country_code
-    client[db]['states'].create_index('id', unique=True)
+    Primary keys:
+    - countries: code (ISO country code)
+    - states: state_code + country_code (composite)
+    - cities: _id (MongoDB ObjectId, auto-indexed)
+    """
+    # Countries: code is the primary key
+    client[db]['countries'].create_index('code', unique=True)
+
+    # States: composite primary key on state_code + country_code
     client[db]['states'].create_index(
         [('state_code', pm.ASCENDING), ('country_code', pm.ASCENDING)],
-        unique=True,
-        sparse=True
+        unique=True
     )
-    client[db]['states'].create_index('country_code')
+    client[db]['states'].create_index('country_code')  # for lookup by country
 
-    # Cities indexes
-    client[db]['cities'].create_index('id', unique=True)
+    # Cities: _id is auto-indexed by MongoDB
+    # Additional index for state_code lookup
     client[db]['cities'].create_index('state_code')
 
     print('Database indexes created/verified.')

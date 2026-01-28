@@ -1,5 +1,8 @@
 # flask-api
+
 An example flask rest API server.
+
+**Progress and goals:** [ProgressAndGoals.md](ProgressAndGoals.md)
 
 To build production, type `make prod`.
 

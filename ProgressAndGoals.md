@@ -6,33 +6,29 @@
 
 # Requirements and goals
 
-These are goals we hope to fulfill by the end of the spring semester.
+Our goal for this semester is build a national parks explorer. Users will be able to find national parks in each state, and learn more information about hours, available activities, and more.
 
-**General**
+We will source national parks data from this [dataset](natl_parks.json). This dataset was pulled from the [National Park Service's API](https://www.nps.gov/subjects/developer/api-documentation.htm#/parks/getPark), and has data on 474 national parks. For simplicity, we plan on working with the downloaded JSON rather than integrating with the API, as this data should not be changing frequently.
 
-- Building a data explorer for unemployment rate information by geographic area.
-- Users select a state or city and see recent unemployment data for that location.
-- Historical unemployment data is shown in a graph format.
-    - If time permits, we would also like to build a graphical map interface where you can click different states.
+These are our goals for the end of the semester. Goals labelled (Want) are things we hope to implement only after finishing the core functionality.
 
-**Frontend**
+## Frontend
 
-- The explorer's frontend is built in React.
-- A map or list of states; clicking a state shows unemployment for that state and a list of its cities.
-- Clicking a city shows unemployment for that city.
-- The frontend should be clean and intuitive to use.
+- [ ] The explorer's frontend is built in React.
+- [ ] Users are able to select a state from a list
+    - [ ] (Want) Users can also select states from a visual map
+- [ ] Selecting a state shows a list of all national parks in that state
+    - [ ] (Want) National parks are shown on a map using latitude/longitude data
+- [ ] Selecting a national park shows detailed info about that park. This includes a description, open hours, contact info, activities available at the park, and other details.
+- [ ] (Want) Users can search for a national park by name.
+- [ ] (Want) Users can filter parks by activities or other criteria.
+- [ ] Frontend components have unit tests.
+- [ ] Integration tests verify the full flow (state selection -> park list -> park details).
 
-**Geography**
 
-- States and cities are stored in the database. Cities belong to states.
-- The API exposes this hierarchy (list states, list cities by state, etc.).
-    - The two above has already been accomplished in our schema from last semester.
-- The explorer lists and navigates this hierarchy (e.g. pick a state, then see its cities).
+## Database and API
 
-**Data and API**
-
-- Unemployment data is shown for the selected state or city.
-- Data is loaded from BLS [state](https://www.bls.gov/web/laus/laumstrk.htm) and [metro](https://www.bls.gov/web/metro/laummtrk.htm) datasets via an ETL script.
-    - We might choose different info to show if we find more interesting/fun datasets. They should still be similarly organized by state/city.
-- New API endpoints return unemployment by state and by city (or metro).
-- API endpoints have a security layer and DB create/delete/update operations are not accessible to all users.
+- [ ] Data is loaded from our [national parks dataset](natl_parks.json) via an ETL script.
+- [ ] Park entries are tied to state entries by ID in our existing schema. The API exposes this hierarchy, so the frontend can query for parks by state.
+- [ ] New API endpoints are created to interact with the parks table.
+- [ ] API endpoints have a security layer and DB create/delete/update operations are not accessible to all users.

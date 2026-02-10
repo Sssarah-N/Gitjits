@@ -59,10 +59,28 @@ def get(park_code: str) -> dict:
 def delete(park_code: str):
     """Delete a park by park code."""
     dbc.connect_db()
-    # TODO: validate park_code
+
+    # Validate park_code
     if not park_code:
         raise ValueError('Park code is required')
+    if not isinstance(park_code, str):
+        raise ValueError(
+            f'Park code must be a string, got {type(park_code).__name__}'
+        )
+
+    # Park codes are typically 2-6 lowercase alphanumeric characters
+    park_code = park_code.strip().lower()
+    if len(park_code) < 2 or len(park_code) > 10:
+        raise ValueError(f'Invalid park code length: {park_code}')
+    if not park_code.isalnum():
+        raise ValueError(f'Park code must be alphanumeric: {park_code}')
+
+    # Clear cache before deletion
+    park_cache.clear()
+
+    # Delete the park
     ret = dbc.delete(PARK_COLLECTION, {PARK_CODE: park_code})
     if ret < 1:
         raise KeyError(f'Park not found: {park_code}')
+
     return ret

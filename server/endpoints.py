@@ -316,16 +316,21 @@ class Park(Resource):
             return {'Park': updated}
         return {'Error': 'Park update not implemented'}, 501
 
-
-# TODO: add update endpoint
-
-# TODO: add delete endpoint
+    @handle_errors
+    def delete(self, park_id):
+        """Delete a park by MongoDB ObjectId."""
+        if hasattr(pqry, 'delete'):
+            pqry.delete(park_id)
+            return {'Message': f'Park {park_id} deleted'}
+        return {'Error': 'Park deletion not implemented'}, 501
 
 # TODO: add class ParksByState(Resource) for finding parks by state
 
 # =============================================================================
 # Utility Endpoints
 # =============================================================================
+
+
 @api.route('/hello')
 class HelloWorld(Resource):
     """Health check endpoint."""

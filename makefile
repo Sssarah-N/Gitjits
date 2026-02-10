@@ -4,6 +4,7 @@ include common.mk
 CITIES_DIR = cities
 STATES_DIR = states
 COUNTRIES_DIR = countries
+PARKS_DIR = parks
 API_DIR = server
 DB_DIR = data
 SEC_DIR = security
@@ -27,6 +28,7 @@ all_tests: FORCE
 	cd $(COUNTRIES_DIR); make tests
 	cd $(EXAMPLES_DIR); make tests
 	cd $(DB_DIR); make tests
+	cd $(PARKS_DIR); make tests
 
 dev_env: FORCE
 	pip install -r $(REQ_DIR)/requirements-dev.txt

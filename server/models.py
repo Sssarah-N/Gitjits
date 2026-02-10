@@ -50,6 +50,14 @@ def register_models(api):
             description='Continent', example='North America')
     })
 
+    park_model = api.model('Park', {
+        'name': fields.String(
+            required=True, description='Park name',
+            example='Abraham Lincoln Birthplace National Historical Park'),
+        'state_code': fields.String(
+            required=True, description='State code', example='KY')
+    })
+
     # Response models
     error_model = api.model('Error', {
         'Error': fields.String(required=True, description='Error message')
@@ -75,13 +83,20 @@ def register_models(api):
             fields.Nested(country_model), description='List of countries')
     })
 
+    parks_list = api.model('ParksList', {
+        'Parks': fields.List(
+            fields.Nested(park_model), description='List of parks')
+    })
+
     return {
         'city': city_model,
         'state': state_model,
         'country': country_model,
+        'park': park_model,
         'error': error_model,
         'message': message_model,
         'cities_list': cities_list,
         'states_list': states_list,
         'countries_list': countries_list,
+        'parks_list': parks_list,
     }

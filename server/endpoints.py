@@ -9,6 +9,7 @@ from flask_cors import CORS
 import cities.queries as cqry
 import states.queries as sqry
 import countries.queries as coqry
+import parks.queries as pqry
 from server.models import register_models
 
 # =============================================================================
@@ -17,7 +18,8 @@ from server.models import register_models
 app = Flask(__name__)
 CORS(app)
 api = Api(app, title='Geographic Data API', version='1.0',
-          description='API for managing cities, states, and countries')
+          description='''API for managing cities, states, countries,
+          and national parks.''')
 
 # Register Swagger models
 models = register_models(api)
@@ -26,10 +28,12 @@ models = register_models(api)
 cities_ns = Namespace('cities', description='Cities operations')
 states_ns = Namespace('states', description='States operations')
 countries_ns = Namespace('countries', description='Countries operations')
+parks_ns = Namespace('parks', description='National parks operations')
 
 api.add_namespace(cities_ns, path='/cities')
 api.add_namespace(states_ns, path='/states')
 api.add_namespace(countries_ns, path='/countries')
+api.add_namespace(parks_ns, path='/parks')
 
 # Constants for tests and response keys
 HELLO_EP = '/hello'
@@ -50,6 +54,10 @@ STATE_RESP = 'State'
 COUNTRIES_EPS = '/countries'
 COUNTRIES_RESP = 'Countries'
 COUNTRY_RESP = 'Country'
+
+PARKS_EPS = '/parks'
+PARKS_RESP = 'Parks'
+PARK_RESP = 'Park'
 
 MESSAGE = 'Message'
 ERROR = 'Error'
@@ -257,6 +265,64 @@ class StateByCode(Resource):
         return {'Message': f'State {state_code} in {country_code} deleted'}
 
 
+@parks_ns.route('')
+class Parks(Resource):
+    """Operations on the parks collection."""
+
+    @api.doc(description='Get all parks')
+    @api.response(200, 'Success', models['parks_list'])
+    @handle_errors
+    def get(self):
+        """Get all parks."""
+        # Note: You'll need to implement pqry.read() in parks/queries.py
+        try:
+            parks = pqry.read() if hasattr(pqry, 'read') else []
+            return {'Parks': parks}
+        except AttributeError:
+            return {'Parks': []}
+
+    @api.expect(models['park'])
+    @api.response(201, 'Created')
+    @handle_errors
+    def post(self):
+        """Create a new park."""
+        data = request.json
+        if not data:
+            return {'Error': 'Request body must contain JSON data'}, 400
+        park_id = pqry.create(data)
+        return {'Parks': {'_id': park_id}}, 201
+
+
+@parks_ns.route('/<park_id>')
+class Park(Resource):
+    """Operations on individual parks by MongoDB ObjectId."""
+
+    @api.doc(params={'park_id': 'MongoDB ObjectId'})
+    @api.response(200, 'Success', models['park'])
+    @handle_errors
+    def get(self, park_id):
+        """Get a park by MongoDB ObjectId."""
+        if hasattr(pqry, 'get'):
+            return {'Park': pqry.get(park_id)}
+        return {'Error': 'Park retrieval not implemented'}, 501
+
+    @api.expect(models['park'])
+    @handle_errors
+    def put(self, park_id):
+        """Update a park by MongoDB ObjectId."""
+        if hasattr(pqry, 'update'):
+            pqry.update(park_id, request.json)
+            updated = pqry.get(park_id)
+            return {'Park': updated}
+        return {'Error': 'Park update not implemented'}, 501
+
+
+# TODO: add update endpoint
+
+# TODO: add delete endpoint
+
+# TODO: add class ParksByState(Resource) for finding parks by state
+
 # =============================================================================
 # Utility Endpoints
 # =============================================================================
@@ -286,14 +352,23 @@ class Statistics(Resource):
             code = state.get('country_code', 'Unknown')
             states_by_country[code] = states_by_country.get(code, 0) + 1
 
+        # Count parks if available
+        parks = []
+        try:
+            if hasattr(pqry, 'read'):
+                parks = pqry.read()
+        except Exception:
+            pass
+
         return {
             'Statistics': {
                 'total_countries': len(countries),
                 'total_states': len(states),
                 'total_cities': len(cities),
+                'total_parks': len(parks),
                 'states_by_country': states_by_country,
                 'database': 'Gitjits',
-                'collections': ['countries', 'states', 'cities'],
+                'collections': ['countries', 'states', 'cities', 'parks'],
             }
         }
 

@@ -2,7 +2,7 @@
 
 - **MongoDB with geographic data.**  We have cities, states, and countries in the database. Cities belong to states; states belong to countries. The DB is on PythonAnywhere and can be queried by name, code, or ID. The DB can also be run locally for testing as well.
 
-- **REST API for geography.** We built a Flask API with endpoints to create, read, update, and delete countries, states, and cities (including by state/country). Swagger docs are accessible at `/` when the server is running. Each endpoint also has thorough unit tests.
+- **REST API for geography.** We built a Flask API with endpoints to create, read, update, and delete countries, states, and cities (including by state/country). Swagger docs are accessible at `/` when the server is running, [link here](https://gitjits.pythonanywhere.com/). Each endpoint also has thorough unit tests.
 
 - **CI/CD tests.** We implemented GitHub Actions to validate that new changes to the code still pass all of our unit tests.
 

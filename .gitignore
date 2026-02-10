@@ -6,6 +6,9 @@ __pycache__/
 # virtual env
 demo-repo4-venv
 
+# Node modules
+node_modules/
+
 # vim files
 *~
 *.swp

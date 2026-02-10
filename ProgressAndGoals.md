@@ -4,6 +4,8 @@
 
 - **REST API for geography.** We built a Flask API with endpoints to create, read, update, and delete countries, states, and cities (including by state/country). Swagger docs are accessible at `/` when the server is running. Each endpoint also has thorough unit tests.
 
+- **CI/CD tests.** We implemented GitHub Actions to validate that new changes to the code still pass all of our unit tests.
+
 # Requirements and goals
 
 Our goal for this semester is build a national parks explorer. Users will be able to find national parks in each state, and learn more information about hours, available activities, and more.

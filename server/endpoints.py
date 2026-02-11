@@ -327,6 +327,7 @@ class Park(Resource):
             return {'Message': f'Park {park_id} deleted'}
         return {'Error': 'Park deletion not implemented'}, 501
 
+
 # class ParksByState(Resource) for finding parks by state
 @parks_ns.route('/state/<state_code>')
 class ParksByState(Resource):
@@ -342,7 +343,7 @@ class ParksByState(Resource):
             return {'Parks': parks}, 200
         except ValueError as e:
             return {'Error': str(e)}, 400
-        except Exception as e:
+        except Exception:
             return {'Error': 'Internal server error'}, 500
 
 # =============================================================================

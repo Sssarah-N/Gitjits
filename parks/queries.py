@@ -61,10 +61,11 @@ def get(park_code: str) -> dict:
         )
     return dbc.read_one(PARK_COLLECTION, {PARK_CODE: park_code})
 
+
 def get_by_state(state_code: str) -> list:
     """ Get all park records in a state"""
     dbc.connect_db()
-    #validate state code
+    # validate state code
     if not state_code:
         raise ValueError('state code is required')
     if not isinstance(state_code, str):
@@ -72,6 +73,7 @@ def get_by_state(state_code: str) -> list:
             f'state code must be a string, got {type(state_code).__name__}'
         )
     return dbc.read(PARK_COLLECTION, {STATE_CODE: state_code.upper()})
+
 
 def get_by_name(park_name: str) -> dict:
     """ Get park record by name"""
@@ -84,7 +86,8 @@ def get_by_name(park_name: str) -> dict:
             f'Park code must be a string, got {type(park_name).__name__}'
         )
     return dbc.read_one(PARK_COLLECTION, {NAME: park_name})
-    
+
+
 def delete(park_code: str):
     """Delete a park by park code."""
     dbc.connect_db()

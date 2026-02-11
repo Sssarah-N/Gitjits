@@ -265,6 +265,9 @@ class StateByCode(Resource):
         return {'Message': f'State {state_code} in {country_code} deleted'}
 
 
+# =============================================================================
+# Parks Endpoints
+# =============================================================================
 @parks_ns.route('')
 class Parks(Resource):
     """Operations on the parks collection."""
@@ -324,7 +327,23 @@ class Park(Resource):
             return {'Message': f'Park {park_id} deleted'}
         return {'Error': 'Park deletion not implemented'}, 501
 
-# TODO: add class ParksByState(Resource) for finding parks by state
+# class ParksByState(Resource) for finding parks by state
+@parks_ns.route('/state/<state_code>')
+class ParksByState(Resource):
+    """Operations to find parks by state code."""
+
+    @api.doc(params={'state_code': 'Two-letter state code, e.g., CA'})
+    @api.response(200, 'Success', models['parks_list'])
+    @handle_errors
+    def get(self, state_code):
+        """Get all parks in a state."""
+        try:
+            parks = pqry.get_by_state(state_code)
+            return {'Parks': parks}, 200
+        except ValueError as e:
+            return {'Error': str(e)}, 400
+        except Exception as e:
+            return {'Error': 'Internal server error'}, 500
 
 # =============================================================================
 # Utility Endpoints

@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import pytest
+import uuid
 # from unittest.mock import patch
 # from bson import ObjectId
 
@@ -8,7 +9,10 @@ from parks import queries as qry
 
 
 def get_temp_rec():
-    return deepcopy(qry.SAMPLE_PARK)
+    rec = deepcopy(qry.SAMPLE_PARK)
+    # make unique park code for test to avoid duplicates
+    rec["park_code"] = str(uuid.uuid4())[:6]
+    return rec
 
 
 @pytest.fixture(autouse=True)
@@ -94,5 +98,64 @@ def test_delete_clears_cache(temp_park):
     # Cache should be cleared after delete
     assert len(qry.park_cache) == 0
 
+
+def test_get_missing_code():
+    """Test get() raises ValueError if code is empty."""
+    with pytest.raises(ValueError):
+        qry.get("")
+
+
+def test_get_wrong_type():
+    """Test get() raises ValueError if code is not a string."""
+    with pytest.raises(ValueError):
+        qry.get(123)
+
+
+def test_get_by_state_valid():
+    """Test get_by_state returns parks in that state."""
+    park = get_temp_rec()
+    park[qry.STATE_CODE] = "CA"
+    qry.create(park)
+
+    results = qry.get_by_state("ca")
+
+    assert isinstance(results, list)
+    assert len(results) > 0
+    assert results[0][qry.STATE_CODE] == "CA"
+
+
+def test_get_by_state_missing():
+    """Test get_by_state raises ValueError if missing."""
+    with pytest.raises(ValueError):
+        qry.get_by_state("")
+
+
+def test_get_by_state_wrong_type():
+    """Test get_by_state raises ValueError if wrong type."""
+    with pytest.raises(ValueError):
+        qry.get_by_state(999)
+
+
+def test_get_by_name_valid():
+    """Test get_by_name finds park by name."""
+    park = get_temp_rec()
+    park[qry.NAME] = "Acadia"
+    qry.create(park)
+
+    result = qry.get_by_name("Acadia")
+
+    assert result[qry.NAME] == "Acadia"
+
+
+def test_get_by_name_missing():
+    """Test get_by_name raises ValueError if missing."""
+    with pytest.raises(ValueError):
+        qry.get_by_name("")
+
+
+def test_get_by_name_wrong_type():
+    """Test get_by_name raises ValueError if wrong type."""
+    with pytest.raises(ValueError):
+        qry.get_by_name(["Acadia"])
 
 # TODO: add tests for update, get_by_state, and other park queries

@@ -72,7 +72,7 @@ def get_by_state(state_code: str) -> list:
         raise ValueError(
             f'state code must be a string, got {type(state_code).__name__}'
         )
-    return dbc.read(PARK_COLLECTION, {STATE_CODE: state_code.upper()})
+    return dbc.read_many(PARK_COLLECTION, {STATE_CODE: state_code.upper()})
 
 
 def get_by_name(park_name: str) -> dict:

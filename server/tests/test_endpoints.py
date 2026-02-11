@@ -11,6 +11,7 @@ import pytest
 
 import server.endpoints as ep
 import cities.queries as cqry
+import parks.queries as pqry
 
 TEST_CLIENT = ep.app.test_client()
 
@@ -753,3 +754,84 @@ def test_country_delete_twice():
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
+
+
+# =============================================================================
+# Parks Endpoints Tests
+# =============================================================================
+
+def test_park_delete_valid():
+    """Test deleting a park with valid park code."""
+    park_code = f"test{uuid.uuid4().hex[:4]}"
+    pqry.create({
+        "name": "Park to Delete",
+        "park_code": park_code,
+        "state_code": "TX"
+    })
+
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.MESSAGE in resp_json
+    assert park_code in resp_json[ep.MESSAGE]
+
+
+def test_park_delete_and_verify_removed():
+    """Test that deleted park is actually removed."""
+    park_code = f"test{uuid.uuid4().hex[:4]}"
+    pqry.create({
+        "name": "Temporary Park",
+        "park_code": park_code,
+        "state_code": "FL"
+    })
+
+    # Delete the park
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    assert resp.status_code == OK
+
+    # Verify it's gone
+    result = pqry.get(park_code)
+    assert result is None
+
+
+def test_park_delete_not_found():
+    """Test deleting a park that doesn't exist."""
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/fake")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_park_delete_twice():
+    """Test deleting the same park twice (should fail second time)."""
+    park_code = f"test{uuid.uuid4().hex[:4]}"
+    pqry.create({
+        "name": "One-time Park",
+        "park_code": park_code,
+        "state_code": "WA"
+    })
+
+    # Delete once
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    assert resp.status_code == OK
+
+    # Delete again - should fail
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    assert resp.status_code == NOT_FOUND
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_park_delete_invalid_code():
+    """Test deleting with invalid park code format."""
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/invalid park!")
+    assert resp.status_code == BAD_REQUEST
+    resp_json = resp.get_json()
+    assert ep.ERROR in resp_json
+
+
+def test_park_delete_empty_code():
+    """Test deleting with empty park code."""
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/")
+    # This hits the collection endpoint, not individual park
+    assert resp.status_code in [BAD_REQUEST, NOT_FOUND, 405]

@@ -1,6 +1,6 @@
 """
 Flask API endpoints for geographic data management.
-Handles CRUD operations for cities, states, and countries.
+Handles CRUD operations for cities, states, countries, and national parks.
 """
 from flask import Flask, request
 from flask_restx import Resource, Api, Namespace
@@ -18,8 +18,7 @@ from server.models import register_models
 app = Flask(__name__)
 CORS(app)
 api = Api(app, title='Geographic Data API', version='1.0',
-          description='''API for managing cities, states, countries,
-          and national parks.''')
+          description='API for managing cities, states, countries, and national parks')
 
 # Register Swagger models
 models = register_models(api)
@@ -83,7 +82,7 @@ def handle_errors(func):
 
 
 # =============================================================================
-# Cities Endpoints
+# Cities Endpoints (canonical: by ObjectId)
 # =============================================================================
 @cities_ns.route('')
 class Cities(Resource):
@@ -95,17 +94,6 @@ class Cities(Resource):
     def get(self):
         """Get all cities."""
         return {'Cities': cqry.read()}
-
-    @api.expect(models['city'])
-    @api.response(201, 'Created')
-    @handle_errors
-    def post(self):
-        """Create a new city."""
-        data = request.json
-        if not data:
-            return {'Error': 'Request body must contain JSON data'}, 400
-        city_id = cqry.create(data)
-        return {'Cities': {'_id': city_id}}, 201
 
 
 @cities_ns.route('/<city_id>')
@@ -134,44 +122,38 @@ class City(Resource):
         return {'Message': f'City {city_id} deleted'}
 
 
-@cities_ns.route('/by-state/<state_code>')
-class CitiesByState(Resource):
-    """Get cities filtered by state."""
-
-    @api.doc(description='Get all cities in a state')
-    @handle_errors
-    def get(self, state_code):
-        """Get all cities by state code (e.g., NY, CA)."""
-        return {'Cities': cqry.get_by_state_code(state_code)}
-
-
 # =============================================================================
-# States Endpoints
+# States Endpoints (search/filter interface only)
 # =============================================================================
 @states_ns.route('')
 class States(Resource):
-    """Operations on the states collection."""
+    """Search/filter states. For canonical CRUD, use nested routes."""
 
-    @api.doc(description='Get all states')
+    @api.doc(description='Get all states (use query params to filter)',
+             params={
+                 'country_code': 'Filter by country code (e.g., US)',
+                 'state_code': 'Filter by state code (e.g., NY)'
+             })
     @api.response(200, 'Success', models['states_list'])
     @handle_errors
     def get(self):
-        """Get all states."""
-        return {'States': sqry.read()}
+        """
+        Get states with optional filtering.
+        Use /countries/{code}/states for canonical access.
+        """
+        country_code = request.args.get('country_code')
+        state_code = request.args.get('state_code')
 
-    @api.expect(models['state'])
-    @api.response(201, 'Created')
-    @handle_errors
-    def post(self):
-        """Create a new state."""
-        data = request.json
-        if not data:
-            return {'Error': 'Request body must contain JSON data'}, 400
-        state_code, country_code = sqry.create(data)
-        return {'States': {
-            'state_code': state_code,
-            'country_code': country_code
-        }}, 201
+        states = sqry.read()
+
+        if country_code:
+            states = [s for s in states
+                      if s.get('country_code', '').upper() == country_code.upper()]
+        if state_code:
+            states = [s for s in states
+                      if s.get('state_code', '').upper() == state_code.upper()]
+
+        return {'States': states}
 
 
 # =============================================================================
@@ -197,7 +179,7 @@ class Countries(Resource):
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
         code = coqry.create(data)
-        return {'Countries': {'code': code}}, 201
+        return {'Country': {'code': code}}, 201
 
 
 @countries_ns.route('/<code>')
@@ -226,15 +208,36 @@ class Country(Resource):
         return {'Message': f'Country {code} deleted'}
 
 
+# =============================================================================
+# Nested States under Countries (canonical CRUD)
+# =============================================================================
 @countries_ns.route('/<country_code>/states')
 class StatesByCountry(Resource):
-    """Get all states in a country."""
+    """List and create states within a country."""
 
     @api.doc(params={'country_code': 'ISO country code (e.g., US, CA)'})
     @handle_errors
     def get(self, country_code):
         """Get all states in a country."""
         return {'States': sqry.get_states_by_country(country_code)}
+
+    @api.expect(models['state'])
+    @api.response(201, 'Created')
+    @handle_errors
+    def post(self, country_code):
+        """Create a new state under a country."""
+        data = request.json or {}
+        if not data:
+            return {'Error': 'Request body must contain JSON data'}, 400
+
+        # Force country_code from URL path (ignore body if different)
+        data['country_code'] = country_code.upper()
+
+        state_code, country_code = sqry.create(data)
+        return {'State': {
+            'state_code': state_code,
+            'country_code': country_code
+        }}, 201
 
 
 @countries_ns.route('/<country_code>/states/<state_code>')
@@ -266,6 +269,39 @@ class StateByCode(Resource):
 
 
 # =============================================================================
+# Nested Cities under States (canonical list/create)
+# =============================================================================
+@countries_ns.route('/<country_code>/states/<state_code>/cities')
+class CitiesInState(Resource):
+    """List and create cities within a specific state."""
+
+    @api.doc(params={
+        'country_code': 'ISO country code (e.g., US)',
+        'state_code': 'State/province code (e.g., NY)'
+    })
+    @handle_errors
+    def get(self, country_code, state_code):
+        """Get all cities in a given country+state."""
+        return {'Cities': cqry.get_by_state(country_code, state_code)}
+
+    @api.expect(models['city'])
+    @api.response(201, 'Created')
+    @handle_errors
+    def post(self, country_code, state_code):
+        """Create a city under a given country+state."""
+        data = request.json or {}
+        if not data:
+            return {'Error': 'Request body must contain JSON data'}, 400
+
+        # Force ownership from URL path (override body to prevent dirty data)
+        data['country_code'] = country_code.upper()
+        data['state_code'] = state_code.upper()
+
+        city_id = cqry.create(data)
+        return {'City': {'_id': city_id}}, 201
+
+
+# =============================================================================
 # Parks Endpoints
 # =============================================================================
 @parks_ns.route('')
@@ -277,7 +313,6 @@ class Parks(Resource):
     @handle_errors
     def get(self):
         """Get all parks."""
-        # Note: You'll need to implement pqry.read() in parks/queries.py
         try:
             parks = pqry.read() if hasattr(pqry, 'read') else []
             return {'Parks': parks}
@@ -328,7 +363,6 @@ class Park(Resource):
         return {'Error': 'Park deletion not implemented'}, 501
 
 
-# class ParksByState(Resource) for finding parks by state
 @parks_ns.route('/state/<state_code>')
 class ParksByState(Resource):
     """Operations to find parks by state code."""
@@ -346,11 +380,10 @@ class ParksByState(Resource):
         except Exception:
             return {'Error': 'Internal server error'}, 500
 
+
 # =============================================================================
 # Utility Endpoints
 # =============================================================================
-
-
 @api.route('/hello')
 class HelloWorld(Resource):
     """Health check endpoint."""
@@ -403,11 +436,22 @@ class Endpoints(Resource):
     """List all available endpoints."""
 
     def get(self):
-        """Get list of all API endpoints."""
-        endpoints = sorted(
-            rule.rule for rule in api.app.url_map.iter_rules()
-        )
-        return {'Available endpoints': endpoints}
+        """Get list of all public API endpoints with methods."""
+        public = []
+        for rule in api.app.url_map.iter_rules():
+            # Skip internal/swagger/static routes
+            if rule.rule.startswith(('/swagger', '/static', '/swaggerui')):
+                continue
+            # Only include standard HTTP methods
+            methods = sorted(
+                m for m in rule.methods if m in {'GET', 'POST', 'PUT', 'DELETE'}
+            )
+            if not methods:
+                continue
+            public.append({'path': rule.rule, 'methods': methods})
+
+        public.sort(key=lambda x: x['path'])
+        return {'Available endpoints': public}
 
 
 @api.route('/delete-all-data')

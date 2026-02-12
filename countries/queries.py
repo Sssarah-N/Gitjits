@@ -31,9 +31,11 @@ def is_valid_code(code: str) -> bool:
     """
     if not isinstance(code, str):
         return False
+    # Remove user input like spaces, tabs, newlines, etc.
     code = code.strip()
     if len(code) < 2 or len(code) > 3:
         return False
+    # Check if the code is all letters 'A' to 'Z'"
     if not code.isalpha():
         return False
     return True

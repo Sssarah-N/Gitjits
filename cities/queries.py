@@ -10,13 +10,15 @@ CITY_COLLECTION = 'cities'
 MONGO_ID = '_id'
 NAME = 'name'
 STATE_CODE = 'state_code'
+COUNTRY_CODE = 'country_code'
 
 # Maximum length for state/province/region codes
 MAX_STATE_CODE_LENGTH = 10
 
 SAMPLE_CITY = {
     NAME: 'New York',
-    STATE_CODE: 'NY'
+    STATE_CODE: 'NY',
+    COUNTRY_CODE: 'US'
 }
 
 city_cache = {}
@@ -37,25 +39,6 @@ def is_valid_state_code(state_code: str) -> bool:
 
     Accepts any alphanumeric code with reasonable length.
     Works for US states, Canadian provinces, Australian states, etc.
-
-    Args:
-        state_code: State/province/region code
-            (e.g., 'NY', 'ON', 'NSW', 'Tokyo')
-
-    Returns:
-        True if format is valid, False otherwise
-
-    Examples:
-        >>> is_valid_state_code('NY')      # US - New York
-        True
-        >>> is_valid_state_code('ON')      # Canada - Ontario
-        True
-        >>> is_valid_state_code('NSW')     # Australia - New South Wales
-        True
-        >>> is_valid_state_code('Tokyo')   # Japan
-        True
-        >>> is_valid_state_code('X' * 20) # Too long
-        False
     """
     if not isinstance(state_code, str):
         return False
@@ -112,6 +95,10 @@ def create(flds: dict):
             raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
         flds[STATE_CODE] = flds[STATE_CODE].upper()
 
+    # Normalize country_code if provided
+    if flds.get(COUNTRY_CODE):
+        flds[COUNTRY_CODE] = flds[COUNTRY_CODE].upper()
+
     new_id = dbc.create(CITY_COLLECTION, flds)
     print(f'{new_id=}')
     return new_id
@@ -144,6 +131,10 @@ def update(city_id: str, flds: dict):
         if not is_valid_state_code(flds[STATE_CODE]):
             raise ValueError(f'Invalid state code format: {flds[STATE_CODE]}')
         flds[STATE_CODE] = flds[STATE_CODE].upper()
+
+    # Normalize country_code if provided
+    if flds.get(COUNTRY_CODE):
+        flds[COUNTRY_CODE] = flds[COUNTRY_CODE].upper()
 
     updated = dbc.update(
         CITY_COLLECTION, {MONGO_ID: ObjectId(city_id)}, flds
@@ -180,7 +171,7 @@ def read() -> list:
 
 def get_cities_by_state(state_code: str) -> list:
     """
-    Get all cities in a state.
+    Get all cities in a state (deprecated, use get_by_state instead).
 
     Args:
         state_code: State/province code (e.g., 'NY', 'ON')
@@ -189,6 +180,27 @@ def get_cities_by_state(state_code: str) -> list:
         List of city dicts
     """
     return dbc.read_many(CITY_COLLECTION, {STATE_CODE: state_code})
+
+
+def get_by_state(country_code: str, state_code: str) -> list:
+    """
+    Get all cities in a specific country+state combination.
+
+    This is the canonical way to query cities by state,
+    as state_code alone is not globally unique.
+
+    Args:
+        country_code: ISO country code (e.g., 'US', 'CA')
+        state_code: State/province code (e.g., 'NY', 'ON')
+
+    Returns:
+        List of city dictionaries matching the country+state
+    """
+    query = {
+        COUNTRY_CODE: country_code.upper(),
+        STATE_CODE: state_code.upper()
+    }
+    return dbc.read_many(CITY_COLLECTION, query)
 
 
 def get_by_state_code(state_code: str) -> list:

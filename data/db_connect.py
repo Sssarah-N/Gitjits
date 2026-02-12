@@ -95,6 +95,9 @@ def convert_mongo_id(doc: dict):
     if MONGO_ID in doc:
         # Convert mongo ID to a string so it works as JSON
         doc[MONGO_ID] = str(doc[MONGO_ID])
+    # Remove duplicate 'id' field if it exists (legacy data cleanup)
+    if 'id' in doc and MONGO_ID in doc and doc['id'] == doc[MONGO_ID]:
+        del doc['id']
 
 
 def close_db():
@@ -134,6 +137,7 @@ def read_many(collection: str, filt: dict, db=GEO_DB, no_id=True) -> list:
     for doc in client[db][collection].find(filt):
         if no_id:
             doc.pop(MONGO_ID, None)
+            doc.pop('id', None)  # Clean up legacy 'id' field
         else:
             convert_mongo_id(doc)
         results.append(doc)
@@ -164,6 +168,8 @@ def read(collection, db=GEO_DB, no_id=True) -> list:
     for doc in client[db][collection].find():
         if no_id:
             del doc[MONGO_ID]
+            if 'id' in doc:  # Clean up legacy 'id' field
+                del doc['id']
         else:
             convert_mongo_id(doc)
         ret.append(doc)

@@ -18,7 +18,8 @@ from server.models import register_models
 app = Flask(__name__)
 CORS(app)
 api = Api(app, title='Geographic Data API', version='1.0',
-          description='API for managing cities, states, countries, and national parks')
+          description='API for managing cities, states, countries, '
+                      'and national parks')
 
 # Register Swagger models
 models = register_models(api)
@@ -147,16 +148,18 @@ class States(Resource):
         states = sqry.read()
 
         if country_code:
+            cc = country_code.upper()
             states = [s for s in states
-                      if s.get('country_code', '').upper() == country_code.upper()]
+                      if s.get('country_code', '').upper() == cc]
         if state_code:
+            sc = state_code.upper()
             states = [s for s in states
-                      if s.get('state_code', '').upper() == state_code.upper()]
+                      if s.get('state_code', '').upper() == sc]
 
         return {'States': states}
 
 
-# =============================================================================
+# ============================================================================
 # Countries Endpoints
 # =============================================================================
 @countries_ns.route('')
@@ -289,9 +292,11 @@ class CitiesInState(Resource):
     @handle_errors
     def post(self, country_code, state_code):
         """Create a city under a given country+state."""
-        data = request.json or {}
+        data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
+        if not isinstance(data, dict):
+            return {'Error': 'Request body must be a JSON object'}, 400
 
         # Force ownership from URL path (override body to prevent dirty data)
         data['country_code'] = country_code.upper()
@@ -443,9 +448,8 @@ class Endpoints(Resource):
             if rule.rule.startswith(('/swagger', '/static', '/swaggerui')):
                 continue
             # Only include standard HTTP methods
-            methods = sorted(
-                m for m in rule.methods if m in {'GET', 'POST', 'PUT', 'DELETE'}
-            )
+            valid = {'GET', 'POST', 'PUT', 'DELETE'}
+            methods = sorted(m for m in rule.methods if m in valid)
             if not methods:
                 continue
             public.append({'path': rule.rule, 'methods': methods})
@@ -489,5 +493,5 @@ class DeleteAllData(Resource):
         total = counts['cities'] + counts['states'] + counts['countries']
         return {
             'Deleted': counts,
-            'Message': f'Deleted {total} total items'
+            'Message': f'Deleted {total} items'
         }

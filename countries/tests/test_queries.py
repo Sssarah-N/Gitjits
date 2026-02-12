@@ -1,18 +1,26 @@
 from copy import deepcopy
-import uuid
+import time
 
 import pytest
 from unittest.mock import patch
 
 from countries import queries as qry
 
+# Counter for unique codes
+_code_counter = [0]
+
 
 def get_unique_code():
     """Generate a unique 2-3 letter code (letters only)."""
-    letters = ''.join(c for c in uuid.uuid4().hex.upper() if c.isalpha())[:2]
-    if len(letters) < 2:
-        letters = 'XY'
-    return f'T{letters}'[:3]
+    _code_counter[0] += 1
+    # Use counter + time to ensure uniqueness
+    n = _code_counter[0] + int(time.time() * 1000) % 10000
+    # Convert number to base-26 letters
+    letters = ''
+    for _ in range(3):
+        letters = chr(ord('A') + (n % 26)) + letters
+        n //= 26
+    return letters[:3]
 
 
 def get_temp_rec():

@@ -1,24 +1,43 @@
 """
-This file deals with our city-level data.
-Uses MongoDB _id as the primary key (cities don't have a natural key).
+This file deals with our national parks data.
+Uses park_code as the primary key (from NPS dataset).
 """
 from bson import ObjectId
 import data.db_connect as dbc
 
 PARK_COLLECTION = 'parks'
 
+# Field constants
 MONGO_ID = '_id'
 NAME = 'name'
-STATE_CODE = 'state_code'
+FULL_NAME = 'full_name'
 PARK_CODE = 'park_code'
+STATE_CODE = 'state_code'
+DESCRIPTION = 'description'
+LATITUDE = 'latitude'
+LONGITUDE = 'longitude'
+URL = 'url'
+ACTIVITIES = 'activities'
+CONTACTS = 'contacts'
+DIRECTIONS_INFO = 'directions_info'
+DIRECTIONS_URL = 'directions_url'
+OPERATING_HOURS = 'operating_hours'
+ADDRESSES = 'addresses'
+IMAGES = 'images'
+WEATHER_INFO = 'weather_info'
+DESIGNATION = 'designation'
 
 # Maximum length for state/province/region codes
 MAX_STATE_CODE_LENGTH = 10
 
 SAMPLE_PARK = {
-    NAME: 'Abraham Lincoln Birthplace National Historical Park',
-    PARK_CODE: 'abli',  # park code is from our dataset
-    STATE_CODE: 'KY'
+    NAME: 'Abraham Lincoln Birthplace',
+    FULL_NAME: 'Abraham Lincoln Birthplace National Historical Park',
+    PARK_CODE: 'abli',
+    STATE_CODE: 'KY',
+    LATITUDE: 37.5858662,
+    LONGITUDE: -85.67330523,
+    DESIGNATION: 'National Historical Park'
 }
 
 park_cache = {}
@@ -41,8 +60,21 @@ def read() -> list:
 def create(flds: dict, reload=True):
     """Create a new park record."""
     dbc.connect_db()
-    # TODO: validate flds
-    # TODO: handle more fields (lat, long, url, activities, etc.)
+
+    if not isinstance(flds, dict):
+        raise ValueError(f'Expected dict, got {type(flds).__name__}')
+    if not flds.get(PARK_CODE):
+        raise ValueError('Park code is required')
+    if not flds.get(NAME) and not flds.get(FULL_NAME):
+        raise ValueError('Park name is required')
+
+    # Normalize park_code to lowercase
+    flds[PARK_CODE] = flds[PARK_CODE].strip().lower()
+
+    # Normalize state_code to uppercase
+    if flds.get(STATE_CODE):
+        flds[STATE_CODE] = flds[STATE_CODE].upper()
+
     if reload:
         park_cache.clear()
     dbc.create(PARK_COLLECTION, flds)

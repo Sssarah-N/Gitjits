@@ -4,6 +4,7 @@ Uses park_code as the primary key (from NPS dataset).
 """
 from bson import ObjectId
 import data.db_connect as dbc
+import states.queries as sqry
 
 PARK_COLLECTION = 'parks'
 
@@ -73,7 +74,13 @@ def create(flds: dict, reload=True):
 
     # Normalize state_code to uppercase
     if flds.get(STATE_CODE):
-        flds[STATE_CODE] = flds[STATE_CODE].upper()
+        state_code = flds[STATE_CODE].upper()
+        if not sqry.is_valid_state_code(state_code):
+            raise ValueError(f'Invalid state code format: {state_code}')
+        # NOTE: this assumes all parks are in US
+        if not sqry.state_exists(state_code, 'US'):
+            raise ValueError(f'State not found: {state_code}')
+        flds[STATE_CODE] = state_code
 
     if reload:
         park_cache.clear()

@@ -4,7 +4,6 @@ Uses park_code as the primary key (from NPS dataset).
 """
 from bson import ObjectId
 import data.db_connect as dbc
-import states.queries as sqry
 
 PARK_COLLECTION = 'parks'
 
@@ -35,7 +34,7 @@ SAMPLE_PARK = {
     NAME: 'Abraham Lincoln Birthplace',
     FULL_NAME: 'Abraham Lincoln Birthplace National Historical Park',
     PARK_CODE: 'abli',
-    STATE_CODE: 'KY',
+    STATE_CODE: 'KY,IN',
     LATITUDE: 37.5858662,
     LONGITUDE: -85.67330523,
     DESIGNATION: 'National Historical Park'
@@ -74,16 +73,15 @@ def create(flds: dict, reload=True):
 
     # Normalize state_code to uppercase
     if flds.get(STATE_CODE):
-        state_code = flds[STATE_CODE].upper()
-        if not sqry.is_valid_state_code(state_code):
-            raise ValueError(f'Invalid state code format: {state_code}')
-        # NOTE: this assumes all parks are in US
-        if not sqry.state_exists(state_code, 'US'):
-            raise ValueError(f'State not found: {state_code}')
-        flds[STATE_CODE] = state_code
+        flds[STATE_CODE] = [state_code.strip().upper()
+                            for state_code in flds[STATE_CODE].split(',')
+                            if state_code.strip()]
+
+    # TODO: validate that each state exists
 
     if reload:
         park_cache.clear()
+
     dbc.create(PARK_COLLECTION, flds)
     return flds[PARK_CODE]
 

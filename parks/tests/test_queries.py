@@ -121,7 +121,7 @@ def test_get_by_state_valid():
 
     assert isinstance(results, list)
     assert len(results) > 0
-    assert results[0][qry.STATE_CODE] == "CA"
+    assert "CA" in results[0][qry.STATE_CODE]
 
 
 def test_get_by_state_missing():

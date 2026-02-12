@@ -112,7 +112,7 @@ def create(collection, doc, db=GEO_DB):
     """
     Insert a single doc into collection.
     """
-    print(f'{doc=}')
+    # print(f'{doc=}')
     ret = client[db][collection].insert_one(doc)
     return str(ret.inserted_id)
 

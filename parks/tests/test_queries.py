@@ -114,14 +114,13 @@ def test_get_wrong_type():
 def test_get_by_state_valid():
     """Test get_by_state returns parks in that state."""
     park = get_temp_rec()
-    park[qry.STATE_CODE] = "CA"
     qry.create(park)
 
-    results = qry.get_by_state("ca")
+    results = qry.get_by_state("ky")
 
     assert isinstance(results, list)
     assert len(results) > 0
-    assert "CA" in results[0][qry.STATE_CODE]
+    assert "KY" in results[0][qry.STATE_CODE]
 
 
 def test_get_by_state_missing():

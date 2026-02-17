@@ -34,7 +34,7 @@ SAMPLE_PARK = {
     NAME: 'Abraham Lincoln Birthplace',
     FULL_NAME: 'Abraham Lincoln Birthplace National Historical Park',
     PARK_CODE: 'abli',
-    STATE_CODE: 'KY,IN',
+    STATE_CODE: ['KY', 'IN'],
     LATITUDE: 37.5858662,
     LONGITUDE: -85.67330523,
     DESIGNATION: 'National Historical Park'

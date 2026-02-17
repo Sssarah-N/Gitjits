@@ -111,16 +111,13 @@ def test_get_wrong_type():
         qry.get(123)
 
 
-def test_get_by_state_valid():
+def test_get_by_state_valid(temp_park):
     """Test get_by_state returns parks in that state."""
-    park = get_temp_rec()
-    qry.create(park)
-
-    results = qry.get_by_state("ky")
+    results = qry.get_by_state(qry.SAMPLE_PARK[qry.STATE_CODE][0])
 
     assert isinstance(results, list)
     assert len(results) > 0
-    assert "KY" in results[0][qry.STATE_CODE]
+    assert qry.SAMPLE_PARK[qry.STATE_CODE][0] in results[0][qry.STATE_CODE]
 
 
 def test_get_by_state_missing():
@@ -135,15 +132,11 @@ def test_get_by_state_wrong_type():
         qry.get_by_state(999)
 
 
-def test_get_by_name_valid():
+def test_get_by_name_valid(temp_park):
     """Test get_by_name finds park by name."""
-    park = get_temp_rec()
-    park[qry.NAME] = "Acadia"
-    qry.create(park)
+    result = qry.get_by_name(qry.SAMPLE_PARK[qry.NAME])
 
-    result = qry.get_by_name("Acadia")
-
-    assert result[qry.NAME] == "Acadia"
+    assert result[qry.NAME] == qry.SAMPLE_PARK[qry.NAME]
 
 
 def test_get_by_name_missing():
@@ -157,4 +150,4 @@ def test_get_by_name_wrong_type():
     with pytest.raises(ValueError):
         qry.get_by_name(["Acadia"])
 
-# TODO: add tests for update, get_by_state, and other park queries
+# TODO: add tests for update

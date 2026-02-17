@@ -119,6 +119,9 @@ def get_by_name(park_name: str) -> dict:
     return dbc.read_one(PARK_COLLECTION, {NAME: park_name})
 
 
+# TODO: create update handler
+
+
 def delete(park_code: str):
     """Delete a park by park code."""
     dbc.connect_db()

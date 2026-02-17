@@ -71,12 +71,6 @@ def create(flds: dict, reload=True):
     # Normalize park_code to lowercase
     flds[PARK_CODE] = flds[PARK_CODE].strip().lower()
 
-    # Normalize state_code to uppercase
-    if flds.get(STATE_CODE):
-        flds[STATE_CODE] = [state_code.strip().upper()
-                            for state_code in flds[STATE_CODE].split(',')
-                            if state_code.strip()]
-
     # TODO: validate that each state exists
 
     if reload:

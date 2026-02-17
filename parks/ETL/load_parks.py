@@ -111,9 +111,9 @@ def transform(parks: list) -> list:
                     if dest_field == ACTIVITIES and isinstance(value, list):
                         value = [a.get('name') for a in value if 'name' in a]
 
-                    # Normalize state codes to uppercase
+                    # Normalize state codes to uppercase (API may return string "CA,NV" or list ["CA","NV"])
                     if dest_field == STATE_CODE and value:
-                        value = value.upper()
+                        value = [state.strip().upper() for state in value.split(',') if state.strip()]
 
                     park_dict[dest_field] = value
 

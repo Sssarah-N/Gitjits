@@ -100,6 +100,28 @@ def mock_city_cache():
     }
 
 
+@pytest.fixture
+def create_test_park(test_client):
+    """Fixture to create a test park via
+    API and return (park_id, park_code)."""
+    def _create_park(name=None, state_code=TEST_STATE,
+                     location="Somewhere", description="Test park"):
+        park_data = {
+            "name": name or f"Test Park {uuid.uuid4().hex[:6]}",
+            "state_code": state_code,
+            "location": location,
+            "description": description,
+            "park_code": f"P{uuid.uuid4().hex[:6]}"
+        }
+        resp = test_client.post(ep.PARKS_EPS, json=park_data)
+        resp_json = resp.get_json()
+        park_info = resp_json.get('Park') or resp_json.get('Parks')
+        park_id = park_info['_id']
+        park_code = park_info.get('park_code')  # might be None
+        return park_id, park_code
+    return _create_park
+
+
 def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)
     resp_json = resp.get_json()
@@ -848,6 +870,37 @@ def test_country_delete_twice():
 # =============================================================================
 # Parks Endpoints Tests (UNCHANGED)
 # =============================================================================
+def test_parks_get_all():
+    """Test retrieving all parks."""
+    resp = TEST_CLIENT.get(ep.PARKS_EPS)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert 'Parks' in resp_json
+    assert isinstance(resp_json['Parks'], list)
+
+
+def test_park_get_by_id(test_client, create_test_park):
+    """Test retrieving a park by its ID."""
+    park_id, _ = create_test_park()
+    resp = test_client.get(f"{ep.PARKS_EPS}/{park_id}")
+    assert resp.status_code == OK
+    data = resp.get_json()
+    assert 'Park' in data
+    # Cleanup
+    test_client.delete(f"{ep.PARKS_EPS}/{park_id}")
+
+
+def test_park_get_by_state(test_client, create_test_park):
+    """Test retrieving parks by state."""
+    park_id, park_code = create_test_park(state_code="TX")
+    resp = test_client.get(f"{ep.PARKS_EPS}/state/TX")
+    assert resp.status_code == OK
+    data = resp.get_json()
+    assert 'Parks' in data
+    assert any(p['state_code'] == 'TX' for p in data['Parks'])
+    # Cleanup
+    test_client.delete(f"{ep.PARKS_EPS}/{park_id}")
+
 
 def test_park_delete_valid():
     """Test deleting a park with valid park code."""

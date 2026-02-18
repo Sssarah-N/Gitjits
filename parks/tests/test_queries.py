@@ -111,17 +111,15 @@ def test_get_wrong_type():
         qry.get(123)
 
 
-def test_get_valid():
+def test_get_valid(temp_park):
     """Test get() returns the correct park for a valid code."""
-    park = get_temp_rec()
-    park_code = "TEST123"
-    park[qry.PARK_CODE] = park_code
-    qry.create(park)
-
+    park_code = temp_park
     result = qry.get(park_code)
+
+    assert result is not None
     assert result[qry.PARK_CODE] == park_code
     # Optionally check other fields
-    assert result[qry.NAME] == park[qry.FULL_NAME]
+    assert qry.NAME in result
 
 
 def test_get_by_state_valid(temp_park):

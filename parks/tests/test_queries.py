@@ -111,6 +111,19 @@ def test_get_wrong_type():
         qry.get(123)
 
 
+def test_get_valid():
+    """Test get() returns the correct park for a valid code."""
+    park = get_temp_rec()
+    park_code = "TEST123"
+    park[qry.PARK_CODE] = park_code
+    qry.create(park)
+
+    result = qry.get(park_code)
+    assert result[qry.PARK_CODE] == park_code
+    # Optionally check other fields
+    assert result[qry.NAME] == park[qry.FULL_NAME]
+
+
 def test_get_by_state_valid(temp_park):
     """Test get_by_state returns parks in that state."""
     results = qry.get_by_state(qry.SAMPLE_PARK[qry.STATE_CODE][0])

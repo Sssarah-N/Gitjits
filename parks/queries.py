@@ -119,7 +119,31 @@ def get_by_name(park_name: str) -> dict:
     return dbc.read_one(PARK_COLLECTION, {NAME: park_name})
 
 
-# TODO: create update handler
+def update(park_id: str, data: dict) -> dict:
+    """Update park field"""
+
+    dbc.connect_db()
+
+    if not park_id:
+        raise ValueError("Park ID is required")
+    if not isinstance(park_id, str):
+        raise ValueError(
+            f"Park ID must be a string, got {type(park_id).__name__}")
+    if not ObjectId.is_valid(park_id):
+        raise ValueError(f"Invalid ObjectId format: {park_id}")
+
+    obj_id = ObjectId(park_id)
+
+    if not data or not isinstance(data, dict):
+        raise ValueError("Update data must be a non-empty dictionary")
+
+    ret = dbc.update_one(PARK_COLLECTION, {"_id": obj_id}, {"$set": data})
+    if ret.matched_count == 0:
+        raise KeyError(f"Park not found: {park_id}")
+
+    park_cache.clear()
+    updated_park = dbc.read_one(PARK_COLLECTION, {"_id": obj_id})
+    return updated_park
 
 
 def delete(park_code: str):

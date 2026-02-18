@@ -353,11 +353,9 @@ class Park(Resource):
     @handle_errors
     def put(self, park_id):
         """Update a park by MongoDB ObjectId."""
-        if hasattr(pqry, 'update'):
-            pqry.update(park_id, request.json)
-            updated = pqry.get(park_id)
-            return {'Park': updated}
-        return {'Error': 'Park update not implemented'}, 501
+        pqry.update(park_id, request.json)
+        updated = pqry.get(park_id)
+        return {'Park': updated}
 
     @handle_errors
     def delete(self, park_id):

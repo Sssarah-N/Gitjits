@@ -71,6 +71,17 @@ def create(flds: dict, reload=True):
     # Normalize park_code to lowercase
     flds[PARK_CODE] = flds[PARK_CODE].strip().lower()
 
+    if 'operatingHours' in flds:
+        operating_hours = flds.pop('operatingHours')
+        cleaned_hours = {}
+        for unit in operating_hours:
+            unit_name = unit.get('name', 'Unknown Unit')
+            cleaned_hours[unit_name] = {
+                'description': unit.get('description', ''),
+                'standardHours': unit.get('standardHours', {}),
+                'exceptions': unit.get('exceptions', [])
+            }
+        flds[OPERATING_HOURS] = cleaned_hours
     # TODO: validate that each state exists
 
     if reload:

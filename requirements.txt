@@ -4,3 +4,4 @@ flask_cors
 pymongo
 werkzeug==3.0.6
 certifi
+bcrypt==4.1.2

@@ -22,6 +22,7 @@ from parks.queries import (
     STATE_CODE,
     create,
     get,
+    update
 )
 
 # Additional fields we want to store
@@ -36,6 +37,7 @@ DIRECTIONS_INFO = 'directions_info'
 DIRECTIONS_URL = 'directions_url'
 OPERATING_HOURS = 'operating_hours'
 ADDRESSES = 'addresses'
+CITY = 'city'
 IMAGES = 'images'
 WEATHER_INFO = 'weather_info'
 DESIGNATION = 'designation'
@@ -114,8 +116,38 @@ def transform(parks: list) -> list:
                     # Normalize state codes to uppercase (API may return string "CA,NV" or list ["CA","NV"])
                     if dest_field == STATE_CODE and value:
                         value = [state.strip().upper() for state in value.split(',') if state.strip()]
-
                     park_dict[dest_field] = value
+                    
+                    # Extract primary city from addresses
+                    addresses = park.get("addresses", [])
+
+                    city = None
+                    if isinstance(addresses, list):
+                        # Prefer Physical address if available
+                        for addr in addresses:
+                            if addr.get("type") == "Physical" and addr.get("city"):
+                                city = addr["city"]
+                                break
+
+                        # Fallback to first address city
+                        if not city and addresses:
+                            city = addresses[0].get("city")
+
+                    if city:
+                        park_dict[CITY] = city
+
+                    # Normalize operating hours
+                    if 'operatingHours' in park:
+                        operating_hours = park.pop('operatingHours')
+                        cleaned_hours = {}
+                        for unit in operating_hours:
+                            unit_name = unit.get('name', 'Unknown Unit')
+                            cleaned_hours[unit_name] = {
+                                'description': unit.get('description', ''),
+                                'standardHours': unit.get('standardHours', {}),
+                                'exceptions': unit.get('exceptions', [])
+                            }
+                        park_dict[OPERATING_HOURS] = cleaned_hours
 
             # Validate required fields
             if not park_dict.get(PARK_CODE):
@@ -136,20 +168,23 @@ def transform(parks: list) -> list:
 
 def load(parks: list, skip_existing: bool = True) -> dict:
     """Load parks into MongoDB."""
-    stats = {'created': 0, 'skipped': 0, 'errors': 0}
+    stats = {'created': 0, 'updated': 0, 'skipped': 0, 'errors': 0}
 
     for park in parks:
         try:
             park_code = park[PARK_CODE]
-
             # Check if park already exists
-            if skip_existing:
-                existing = get(park_code)
-                if existing:
-                    stats['skipped'] += 1
-                    continue
+            existing = get(park_code)
+            if existing:
+                # Always update with new data
+                update_fields = {k: v for k, v in park.items() if k != PARK_CODE}
+                if update_fields:
+                    update(existing['_id'], update_fields)
+                    stats['updated'] += 1
+                continue
 
-            create(park, reload=False)
+            # If park doesn't exist, create it
+            create(park)
             stats['created'] += 1
             print(f'  + {park_code}: {park[NAME]}')
 
@@ -185,6 +220,7 @@ def main():
     print(f'\n=== Complete ===')
     print(f'Created: {stats["created"]}')
     print(f'Skipped (existing): {stats["skipped"]}')
+    print(f"Updated: {stats['updated']}")
     print(f'Errors: {stats["errors"]}')
 
 

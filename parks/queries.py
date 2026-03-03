@@ -4,6 +4,7 @@ Uses park_code as the primary key (from NPS dataset).
 """
 from bson import ObjectId
 import data.db_connect as dbc
+from data.db_connect import update as db_update
 
 PARK_COLLECTION = 'parks'
 
@@ -71,17 +72,6 @@ def create(flds: dict, reload=True):
     # Normalize park_code to lowercase
     flds[PARK_CODE] = flds[PARK_CODE].strip().lower()
 
-    if 'operatingHours' in flds:
-        operating_hours = flds.pop('operatingHours')
-        cleaned_hours = {}
-        for unit in operating_hours:
-            unit_name = unit.get('name', 'Unknown Unit')
-            cleaned_hours[unit_name] = {
-                'description': unit.get('description', ''),
-                'standardHours': unit.get('standardHours', {}),
-                'exceptions': unit.get('exceptions', [])
-            }
-        flds[OPERATING_HOURS] = cleaned_hours
     # TODO: validate that each state exists
 
     if reload:
@@ -148,7 +138,7 @@ def update(park_id: str, data: dict) -> dict:
     if not data or not isinstance(data, dict):
         raise ValueError("Update data must be a non-empty dictionary")
 
-    ret = dbc.update_one(PARK_COLLECTION, {"_id": obj_id}, {"$set": data})
+    ret = db_update(PARK_COLLECTION, {"_id": obj_id}, data)
     if ret.matched_count == 0:
         raise KeyError(f"Park not found: {park_id}")
 

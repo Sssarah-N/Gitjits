@@ -332,38 +332,69 @@ class Parks(Resource):
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
-        park_id = pqry.create(data)
-        return {'Parks': {'_id': park_id}}, 201
+        park_code = pqry.create(data)
+        return {'Park': {'park_code': park_code}}, 201
 
 
-@parks_ns.route('/<park_id>')
-class Park(Resource):
-    """Operations on individual parks by MongoDB ObjectId."""
+@parks_ns.route('/code/<park_code>')
+class ParkByCode(Resource):
+    """Operations on individual parks by park code."""
 
-    @api.doc(params={'park_id': 'MongoDB ObjectId'})
+    @api.doc(params={'park_code': 'NPS park code (e.g., yell, grca, yose)'})
     @api.response(200, 'Success', models['park'])
     @handle_errors
-    def get(self, park_id):
-        """Get a park by MongoDB ObjectId."""
-        if hasattr(pqry, 'get'):
-            return {'Park': pqry.get(park_id)}
-        return {'Error': 'Park retrieval not implemented'}, 501
+    def get(self, park_code):
+        """Get a park by its NPS park code."""
+        park = pqry.get(park_code)
+        if not park:
+            return {'Error': f'Park not found: {park_code}'}, 404
+        return {'Park': park}
 
+    @handle_errors
+    def delete(self, park_code):
+        """Delete a park by park code."""
+        pqry.delete(park_code)
+        return {'Message': f'Park {park_code} deleted'}
+
+
+@parks_ns.route('/id/<park_id>')
+class ParkById(Resource):
+    """Update park by MongoDB ObjectId."""
+
+    @api.doc(params={'park_id': 'MongoDB ObjectId'})
     @api.expect(models['park'])
     @handle_errors
     def put(self, park_id):
         """Update a park by MongoDB ObjectId."""
         pqry.update(park_id, request.json)
-        updated = pqry.get(park_id)
-        return {'Park': updated}
+        # After update, we need park_code to fetch - get from request
+        park_code = request.json.get('park_code')
+        if park_code:
+            updated = pqry.get(park_code)
+            return {'Park': updated}
+        return {'Message': f'Park {park_id} updated'}
 
+
+@parks_ns.route('/search')
+class ParksSearch(Resource):
+    """Search parks by name."""
+
+    @api.doc(params={'name': 'Park name to search (partial match)'})
+    @api.response(200, 'Success', models['parks_list'])
     @handle_errors
-    def delete(self, park_id):
-        """Delete a park by MongoDB ObjectId."""
-        if hasattr(pqry, 'delete'):
-            pqry.delete(park_id)
-            return {'Message': f'Park {park_id} deleted'}
-        return {'Error': 'Park deletion not implemented'}, 501
+    def get(self):
+        """Search parks by name (case-insensitive partial match)."""
+        name_query = request.args.get('name', '').strip().lower()
+        if not name_query:
+            return {'Parks': []}
+
+        all_parks = pqry.read()
+        matched = [
+            p for p in all_parks
+            if name_query in p.get('name', '').lower()
+            or name_query in p.get('full_name', '').lower()
+        ]
+        return {'Parks': matched}
 
 
 @parks_ns.route('/state/<state_code>')

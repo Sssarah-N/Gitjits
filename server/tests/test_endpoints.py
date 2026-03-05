@@ -103,22 +103,22 @@ def mock_city_cache():
 @pytest.fixture
 def create_test_park(test_client):
     """Fixture to create a test park via
-    API and return (park_id, park_code)."""
+    API and return park_code."""
     def _create_park(name=None, state_code=TEST_STATE,
                      location="Somewhere", description="Test park"):
+        park_code = f"p{uuid.uuid4().hex[:6]}".lower()
         park_data = {
             "name": name or f"Test Park {uuid.uuid4().hex[:6]}",
             "state_code": state_code,
             "location": location,
             "description": description,
-            "park_code": f"P{uuid.uuid4().hex[:6]}"
+            "park_code": park_code
         }
         resp = test_client.post(ep.PARKS_EPS, json=park_data)
         resp_json = resp.get_json()
         park_info = resp_json.get('Park') or resp_json.get('Parks')
-        park_id = park_info['_id']
-        park_code = park_info.get('park_code')  # might be None
-        return park_id, park_code
+        returned_code = park_info.get('park_code', park_code)
+        return returned_code
     return _create_park
 
 
@@ -879,39 +879,39 @@ def test_parks_get_all():
     assert isinstance(resp_json['Parks'], list)
 
 
-def test_park_get_by_id(test_client, create_test_park):
-    """Test retrieving a park by its ID."""
-    park_id, _ = create_test_park()
-    resp = test_client.get(f"{ep.PARKS_EPS}/{park_id}")
+def test_park_get_by_code(test_client, create_test_park):
+    """Test retrieving a park by its park code."""
+    park_code = create_test_park()
+    resp = test_client.get(f"{ep.PARKS_EPS}/code/{park_code}")
     assert resp.status_code == OK
     data = resp.get_json()
     assert 'Park' in data
     # Cleanup
-    test_client.delete(f"{ep.PARKS_EPS}/{park_id}")
+    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}")
 
 
 def test_park_get_by_state(test_client, create_test_park):
     """Test retrieving parks by state."""
-    park_id, park_code = create_test_park(state_code="TX")
+    park_code = create_test_park(state_code="TX")
     resp = test_client.get(f"{ep.PARKS_EPS}/state/TX")
     assert resp.status_code == OK
     data = resp.get_json()
     assert 'Parks' in data
     assert any(p['state_code'] == 'TX' for p in data['Parks'])
     # Cleanup
-    test_client.delete(f"{ep.PARKS_EPS}/{park_id}")
+    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}")
 
 
 def test_park_delete_valid():
     """Test deleting a park with valid park code."""
-    park_code = f"test{uuid.uuid4().hex[:4]}"
+    park_code = f"test{uuid.uuid4().hex[:4]}".lower()
     pqry.create({
         "name": "Park to Delete",
         "park_code": park_code,
         "state_code": "TX"
     })
 
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.MESSAGE in resp_json
@@ -920,7 +920,7 @@ def test_park_delete_valid():
 
 def test_park_delete_and_verify_removed():
     """Test that deleted park is actually removed."""
-    park_code = f"test{uuid.uuid4().hex[:4]}"
+    park_code = f"test{uuid.uuid4().hex[:4]}".lower()
     pqry.create({
         "name": "Temporary Park",
         "park_code": park_code,
@@ -928,7 +928,7 @@ def test_park_delete_and_verify_removed():
     })
 
     # Delete the park
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
     assert resp.status_code == OK
 
     # Verify it's gone
@@ -938,7 +938,7 @@ def test_park_delete_and_verify_removed():
 
 def test_park_delete_not_found():
     """Test deleting a park that doesn't exist."""
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/fake")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/fakepk")
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -946,7 +946,7 @@ def test_park_delete_not_found():
 
 def test_park_delete_twice():
     """Test deleting the same park twice (should fail second time)."""
-    park_code = f"test{uuid.uuid4().hex[:4]}"
+    park_code = f"test{uuid.uuid4().hex[:4]}".lower()
     pqry.create({
         "name": "One-time Park",
         "park_code": park_code,
@@ -954,11 +954,11 @@ def test_park_delete_twice():
     })
 
     # Delete once
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
     assert resp.status_code == OK
 
     # Delete again - should fail
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -966,7 +966,8 @@ def test_park_delete_twice():
 
 def test_park_delete_invalid_code():
     """Test deleting with invalid park code format."""
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/invalid park!")
+    # Invalid chars in park code should return 400
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/invalid!")
     assert resp.status_code == BAD_REQUEST
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json

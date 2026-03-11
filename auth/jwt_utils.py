@@ -1,7 +1,4 @@
-"""
-JWT token utilities - STEP BY STEP.
-Starting with just token generation.
-"""
+
 import jwt
 import os
 from datetime import datetime, timedelta

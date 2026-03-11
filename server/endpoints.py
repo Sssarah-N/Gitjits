@@ -11,6 +11,7 @@ import states.queries as sqry
 import countries.queries as coqry
 import parks.queries as pqry
 from server.models import register_models
+from auth.endpoints import auth_ns
 
 # =============================================================================
 # App Setup
@@ -30,6 +31,7 @@ states_ns = Namespace('states', description='States operations')
 countries_ns = Namespace('countries', description='Countries operations')
 parks_ns = Namespace('parks', description='National parks operations')
 
+api.add_namespace(auth_ns, path='/auth')
 api.add_namespace(cities_ns, path='/cities')
 api.add_namespace(states_ns, path='/states')
 api.add_namespace(countries_ns, path='/countries')

@@ -3,7 +3,7 @@ from flask import request
 from flask_restx import Resource, Namespace, fields
 
 import users.queries as uqry
-from auth.jwt_utils import generate_token
+from auth.jwt_utils import generate_token, token_required
 
 # Create namespace
 auth_ns = Namespace('auth', description='Authentication operations')
@@ -86,3 +86,24 @@ class Login(Resource):
             return {'Error': str(e)}, 401
         except Exception as e:
             return {'Error': 'Authentication failed'}, 401
+
+
+@auth_ns.route('/me')
+class CurrentUser(Resource):
+    """Get current user information (protected endpoint)."""
+    
+    @auth_ns.doc(description='Get current user info (requires token)',
+                 security='Bearer')
+    @token_required
+    def get(self, current_user):
+        """Get information about the currently authenticated user."""
+        try:
+            user = uqry.get_user(current_user['username'])
+            if user:
+                # Remove sensitive info
+                user.pop('password_hash', None)
+                user.pop('_id', None)
+                return {'user': user}, 200
+            return {'Error': 'User not found'}, 404
+        except Exception as e:
+            return {'Error': str(e)}, 500

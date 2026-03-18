@@ -20,7 +20,15 @@ app = Flask(__name__)
 CORS(app)
 api = Api(app, title='Geographic Data API', version='1.0',
           description='API for managing cities, states, countries, '
-                      'and national parks')
+                      'and national parks',
+          authorizations={
+              'Bearer': {
+                  'type': 'apiKey',
+                  'in': 'header',
+                  'name': 'Authorization',
+                  'description': 'JWT token. Format: Bearer <token>'
+              }
+          })
 
 # Register Swagger models
 models = register_models(api)

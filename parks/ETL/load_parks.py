@@ -113,41 +113,37 @@ def transform(parks: list) -> list:
                     if dest_field == ACTIVITIES and isinstance(value, list):
                         value = [a.get('name') for a in value if 'name' in a]
 
-                    # Normalize state codes to uppercase (API may return string "CA,NV" or list ["CA","NV"])
+                    # Normalize state codes to uppercase
                     if dest_field == STATE_CODE and value:
                         value = [state.strip().upper() for state in value.split(',') if state.strip()]
+
                     park_dict[dest_field] = value
-                    
-                    # Extract primary city from addresses
-                    addresses = park.get("addresses", [])
 
-                    city = None
-                    if isinstance(addresses, list):
-                        # Prefer Physical address if available
-                        for addr in addresses:
-                            if addr.get("type") == "Physical" and addr.get("city"):
-                                city = addr["city"]
-                                break
+            # Extract primary city from addresses (outside field mapping loop)
+            addresses = park.get("addresses", [])
+            city = None
+            if isinstance(addresses, list):
+                for addr in addresses:
+                    if addr.get("type") == "Physical" and addr.get("city"):
+                        city = addr["city"]
+                        break
+                if not city and addresses:
+                    city = addresses[0].get("city")
+            if city:
+                park_dict[CITY] = city
 
-                        # Fallback to first address city
-                        if not city and addresses:
-                            city = addresses[0].get("city")
-
-                    if city:
-                        park_dict[CITY] = city
-
-                    # Normalize operating hours
-                    if 'operatingHours' in park:
-                        operating_hours = park.pop('operatingHours')
-                        cleaned_hours = {}
-                        for unit in operating_hours:
-                            unit_name = unit.get('name', 'Unknown Unit')
-                            cleaned_hours[unit_name] = {
-                                'description': unit.get('description', ''),
-                                'standardHours': unit.get('standardHours', {}),
-                                'exceptions': unit.get('exceptions', [])
-                            }
-                        park_dict[OPERATING_HOURS] = cleaned_hours
+            # Normalize operating hours (outside field mapping loop)
+            if 'operatingHours' in park:
+                operating_hours = park['operatingHours']
+                cleaned_hours = {}
+                for unit in operating_hours:
+                    unit_name = unit.get('name', 'Unknown Unit')
+                    cleaned_hours[unit_name] = {
+                        'description': unit.get('description', ''),
+                        'standardHours': unit.get('standardHours', {}),
+                        'exceptions': unit.get('exceptions', [])
+                    }
+                park_dict[OPERATING_HOURS] = cleaned_hours
 
             # Validate required fields
             if not park_dict.get(PARK_CODE):

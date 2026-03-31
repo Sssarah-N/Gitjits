@@ -10,7 +10,6 @@ options_ns = Namespace('options', description='Dropdown options for forms')
 @options_ns.route('/roles')
 class RoleOptions(Resource):
     """Get available user roles for dropdown."""
-    
     @options_ns.doc(description='Get user role options for dropdowns')
     def get(self):
         """

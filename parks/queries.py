@@ -236,3 +236,12 @@ def get_all_designations() -> list:
     dbc.connect_db()
     designations = dbc.distinct(PARK_COLLECTION, DESIGNATION)
     return sorted([d for d in designations if d])
+
+
+def get_random() -> dict:
+    """Get a random park."""
+    import random
+    parks = read()
+    if not parks:
+        return None
+    return random.choice(parks)

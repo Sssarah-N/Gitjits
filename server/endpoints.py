@@ -478,6 +478,21 @@ class ParksDesignations(Resource):
         return {'designations': designations, 'count': len(designations)}
 
 
+@parks_ns.route('/random')
+class ParkRandom(Resource):
+    """Get a random park."""
+
+    @api.doc(description='Get a random park for discovery')
+    @api.response(200, 'Success')
+    @handle_errors
+    def get(self):
+        """Get a random park."""
+        park = pqry.get_random()
+        if not park:
+            return {'error': 'No parks available'}, 404
+        return {'park': park}
+
+
 # =============================================================================
 # Utility Endpoints
 # =============================================================================

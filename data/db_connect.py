@@ -145,6 +145,17 @@ def read_many(collection: str, filt: dict, db=GEO_DB, no_id=True) -> list:
 
 
 @needs_db
+def distinct(collection: str, field: str,
+             filt: dict = None, db=GEO_DB) -> list:
+    """
+    Get distinct values for a field in a collection.
+    """
+    if filt:
+        return client[db][collection].distinct(field, filt)
+    return client[db][collection].distinct(field)
+
+
+@needs_db
 def delete(collection: str, filt: dict, db=GEO_DB):
     """
     Find with a filter and return after deleting the first doc found.

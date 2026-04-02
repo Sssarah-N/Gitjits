@@ -427,6 +427,57 @@ class ParksByState(Resource):
             return {'Error': 'Internal server error'}, 500
 
 
+@parks_ns.route('/filter')
+class ParksFilter(Resource):
+    """Advanced park search with multiple filters."""
+
+    @api.doc(params={
+        'name': 'Park name (partial match, case-insensitive)',
+        'state': 'State code (e.g., CA, NY)',
+        'designation': 'Park designation (e.g., National Park)',
+        'activity': 'Activity name (e.g., Hiking, Camping)'
+    })
+    @api.response(200, 'Success', models['parks_list'])
+    @handle_errors
+    def get(self):
+        """Search parks with combined filters."""
+        filters = {
+            'name': request.args.get('name', '').strip(),
+            'state': request.args.get('state', '').strip(),
+            'designation': request.args.get('designation', '').strip(),
+            'activity': request.args.get('activity', '').strip()
+        }
+        filters = {k: v for k, v in filters.items() if v}
+        parks = pqry.search(filters)
+        return {'Parks': parks, 'count': len(parks)}
+
+
+@parks_ns.route('/activities')
+class ParksActivities(Resource):
+    """Get all available park activities."""
+
+    @api.doc(description='Get list of all unique activities across all parks')
+    @api.response(200, 'Success')
+    @handle_errors
+    def get(self):
+        """Get all unique activities."""
+        activities = pqry.get_all_activities()
+        return {'activities': activities, 'count': len(activities)}
+
+
+@parks_ns.route('/designations')
+class ParksDesignations(Resource):
+    """Get all park designations."""
+
+    @api.doc(description='Get list of all unique park designations')
+    @api.response(200, 'Success')
+    @handle_errors
+    def get(self):
+        """Get all unique designations."""
+        designations = pqry.get_all_designations()
+        return {'designations': designations, 'count': len(designations)}
+
+
 # =============================================================================
 # Utility Endpoints
 # =============================================================================

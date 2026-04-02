@@ -175,3 +175,64 @@ def delete(park_code: str):
         raise KeyError(f'Park not found: {park_code}')
 
     return ret
+
+
+def search(filters: dict) -> list:
+    """
+    Search parks with multiple filter criteria.
+
+    Args:
+        filters: dict with optional keys:
+            - name: str (partial match, case-insensitive)
+            - state: str (state code, e.g., 'CA')
+            - designation: str (exact match)
+            - activity: str (parks containing this activity)
+
+    Returns:
+        List of matching parks
+    """
+    dbc.connect_db()
+
+    query = {}
+
+    # State filter
+    if filters.get('state'):
+        query[STATE_CODE] = filters['state'].upper()
+
+    # Designation filter (exact match)
+    if filters.get('designation'):
+        query[DESIGNATION] = filters['designation']
+
+    # Activity filter (parks containing this activity)
+    if filters.get('activity'):
+        query[ACTIVITIES] = filters['activity']
+
+    # Execute query
+    if query:
+        parks = dbc.read_many(PARK_COLLECTION, query)
+    else:
+        parks = dbc.read(PARK_COLLECTION)
+
+    # Name filter (applied in Python for partial matching)
+    if filters.get('name'):
+        name_query = filters['name'].lower()
+        parks = [
+            p for p in parks
+            if name_query in p.get('name', '').lower()
+            or name_query in p.get('full_name', '').lower()
+        ]
+
+    return parks
+
+
+def get_all_activities() -> list:
+    """Get all unique activities across all parks."""
+    dbc.connect_db()
+    return sorted(dbc.distinct(PARK_COLLECTION, ACTIVITIES))
+
+
+def get_all_designations() -> list:
+    """Get all unique park designations."""
+    dbc.connect_db()
+    designations = dbc.distinct(PARK_COLLECTION, DESIGNATION)
+    return sorted([d for d in designations if d])

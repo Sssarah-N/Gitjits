@@ -194,3 +194,64 @@ class CurrentUser(Resource):
             return {'Error': 'User not found'}, 404
         except Exception as e:
             return {'Error': str(e)}, 500
+
+
+@auth_ns.route('/me/saved-parks')
+class SavedParks(Resource):
+    """Manage user's saved parks list."""
+    
+    @auth_ns.doc(description='Get saved parks (requires token)',
+                 security='Bearer')
+    @token_required
+    def get(self, current_user):
+        """Get list of parks saved by current user."""
+        try:
+            saved_parks = uqry.get_saved_parks(current_user['username'])
+            return {'saved_parks': saved_parks}, 200
+        except Exception as e:
+            return {'Error': str(e)}, 500
+    
+    @auth_ns.doc(description='Add park to saved list (requires token)',
+                 security='Bearer')
+    @token_required
+    def post(self, current_user):
+        """Add a park to saved list."""
+        data = request.json
+        if not data or 'park_code' not in data:
+            return {'Error': 'park_code is required'}, 400
+        
+        try:
+            park_code = data['park_code']
+            added = uqry.add_saved_park(current_user['username'], park_code)
+            
+            if added:
+                return {'message': f'Park {park_code} added to saved'}, 201
+            else:
+                return {'message': f'Park {park_code} already saved'}, 200
+        except ValueError as e:
+            return {'Error': str(e)}, 400
+        except Exception as e:
+            return {'Error': str(e)}, 500
+
+
+@auth_ns.route('/me/saved-parks/<park_code>')
+class SavedPark(Resource):
+    """Remove specific park from saved list."""
+    
+    @auth_ns.doc(params={'park_code': 'Park code to remove'},
+                 description='Remove park from saved list (requires token)',
+                 security='Bearer')
+    @token_required
+    def delete(self, park_code, current_user):
+        """Remove a park from saved list."""
+        try:
+            removed = uqry.remove_saved_park(current_user['username'], park_code)
+            
+            if removed:
+                return {'message': f'Park {park_code} removed from saved'}, 200
+            else:
+                return {'Error': f'Park {park_code} not in saved list'}, 404
+        except ValueError as e:
+            return {'Error': str(e)}, 400
+        except Exception as e:
+            return {'Error': str(e)}, 500

@@ -13,6 +13,7 @@ USERNAME = 'username'
 EMAIL = 'email'
 PASSWORD_HASH = 'password_hash'
 ROLE = 'role'
+SAVED_PARKS = 'saved_parks'
 
 # Roles
 ROLE_USER = 'user'
@@ -81,6 +82,7 @@ def create_user(username: str, email: str, password: str,
         EMAIL: email,
         PASSWORD_HASH: password_hash,
         ROLE: role,
+        SAVED_PARKS: [],
         'created_at': datetime.utcnow().isoformat()
     }
     
@@ -123,3 +125,57 @@ def authenticate(username: str, password: str) -> dict:
     user_safe.pop(PASSWORD_HASH, None)
     user_safe.pop('_id', None)
     return user_safe
+
+
+def get_saved_parks(username: str) -> list:
+    """Get list of saved park codes for a user."""
+    user = get_user(username)
+    if not user:
+        raise ValueError(f'User not found: {username}')
+    return user.get(SAVED_PARKS, [])
+
+
+def add_saved_park(username: str, park_code: str) -> bool:
+    """Add a park to user's saved list."""
+    dbc.connect_db()
+    
+    if not park_code:
+        raise ValueError('Park code is required')
+    
+    user = get_user(username)
+    if not user:
+        raise ValueError(f'User not found: {username}')
+    
+    saved_parks = user.get(SAVED_PARKS, [])
+    
+    # Check if already saved
+    if park_code in saved_parks:
+        return False  # Already saved
+    
+    # Add to array
+    saved_parks.append(park_code)
+    dbc.update(USER_COLLECTION, {USERNAME: username}, {SAVED_PARKS: saved_parks})
+    return True
+
+
+def remove_saved_park(username: str, park_code: str) -> bool:
+    """Remove a park from user's saved list."""
+    dbc.connect_db()
+    
+    if not park_code:
+        raise ValueError('Park code is required')
+    
+    user = get_user(username)
+    if not user:
+        raise ValueError(f'User not found: {username}')
+    
+    saved_parks = user.get(SAVED_PARKS, [])
+    
+    # Check if park exists in list
+    if park_code not in saved_parks:
+        return False  # Wasn't saved
+    
+    # Remove from array
+    saved_parks.remove(park_code)
+    dbc.update(USER_COLLECTION, {USERNAME: username}, {SAVED_PARKS: saved_parks})
+    return True

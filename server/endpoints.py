@@ -493,6 +493,46 @@ class ParkRandom(Resource):
         return {'park': park}
 
 
+@parks_ns.route('/nearby')
+class ParksNearby(Resource):
+    """Find parks near given coordinates."""
+
+    @api.doc(params={
+        'lat': 'Latitude (required)',
+        'lon': 'Longitude (required)',
+        'radius': 'Search radius in miles (default: 100)'
+    })
+    @api.response(200, 'Success', models['parks_list'])
+    @api.response(400, 'Bad Request')
+    @handle_errors
+    def get(self):
+        """Find parks within radius of coordinates."""
+        try:
+            lat = request.args.get('lat')
+            lon = request.args.get('lon')
+
+            if not lat or not lon:
+                return {'error': 'lat and lon are required'}, 400
+
+            lat = float(lat)
+            lon = float(lon)
+
+            if not (-90 <= lat <= 90):
+                return {'error': 'lat must be between -90 and 90'}, 400
+            if not (-180 <= lon <= 180):
+                return {'error': 'lon must be between -180 and 180'}, 400
+
+            radius = float(request.args.get('radius', 100))
+            if radius <= 0:
+                return {'error': 'radius must be positive'}, 400
+
+            parks = pqry.get_nearby(lat, lon, radius)
+            return {'Parks': parks, 'count': len(parks)}
+
+        except ValueError:
+            return {'error': 'Invalid numeric value'}, 400
+
+
 # =============================================================================
 # Utility Endpoints
 # =============================================================================

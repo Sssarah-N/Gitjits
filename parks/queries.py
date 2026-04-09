@@ -2,9 +2,22 @@
 This file deals with our national parks data.
 Uses park_code as the primary key (from NPS dataset).
 """
+import math
 from bson import ObjectId
 import data.db_connect as dbc
 from data.db_connect import update as db_update
+
+
+def haversine_distance(lat1, lon1, lat2, lon2) -> float:
+    """Calculate distance in miles between two coordinates."""
+    R = 3959  # Earth radius in miles
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = (math.sin(dlat/2)**2
+         + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2)
+    return 2 * R * math.asin(math.sqrt(a))
+
 
 PARK_COLLECTION = 'parks'
 
@@ -245,3 +258,27 @@ def get_random() -> dict:
     if not parks:
         return None
     return random.choice(parks)
+
+
+def get_nearby(lat: float, lon: float, radius: float = 100) -> list:
+    """
+    Get parks within radius miles of coordinates.
+
+    Args:
+        lat: Latitude of search center
+        lon: Longitude of search center
+        radius: Search radius in miles (default: 100)
+
+    Returns:
+        List of parks sorted by distance, each with distance_miles field
+    """
+    parks = read()
+    nearby = []
+    for p in parks:
+        p_lat, p_lon = p.get(LATITUDE), p.get(LONGITUDE)
+        if p_lat is not None and p_lon is not None:
+            dist = haversine_distance(lat, lon, p_lat, p_lon)
+            if dist <= radius:
+                p['distance_miles'] = round(dist, 1)
+                nearby.append(p)
+    return sorted(nearby, key=lambda x: x['distance_miles'])

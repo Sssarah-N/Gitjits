@@ -106,3 +106,34 @@ def token_required(f):
             return ({'Error': 'Authentication failed'}, 401)
     
     return decorated
+
+
+def admin_required(f):
+    """
+    Decorator for admin-only routes.
+    Checks authentication AND admin role.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        try:
+            token = get_token_from_header()
+            payload = decode_token(token)
+            
+            # Check if user is admin
+            if payload.get('role') != 'admin':
+                return ({'Error': 'Admin access required'}, 403)
+            
+            # Add user info to kwargs
+            kwargs['current_user'] = {
+                'username': payload['username'],
+                'role': payload['role']
+            }
+            
+            return f(*args, **kwargs)
+            
+        except ValueError as e:
+            return ({'Error': str(e)}, 401)
+        except Exception as e:
+            return ({'Error': 'Authentication failed'}, 401)
+    
+    return decorated

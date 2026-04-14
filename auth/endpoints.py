@@ -3,7 +3,7 @@ from flask import request
 from flask_restx import Resource, Namespace, fields
 
 import users.queries as uqry
-from auth.jwt_utils import generate_token, token_required
+from auth.jwt_utils import generate_token, token_required, admin_required
 import examples.form_filler as ff
 
 # Create namespace
@@ -13,8 +13,7 @@ auth_ns = Namespace('auth', description='Authentication operations')
 register_model = auth_ns.model('Register', {
     'username': fields.String(required=True, description='Username (3-20 chars)'),
     'email': fields.String(required=True, description='Email address'),
-    'password': fields.String(required=True, description='Password (min 6 chars)'),
-    'role': fields.String(description='User role (optional, default: user)')
+    'password': fields.String(required=True, description='Password (min 6 chars)')
 })
 
 login_model = auth_ns.model('Login', {
@@ -55,15 +54,6 @@ class RegisterForm(Resource):
                 ff.INPUT_TYPE: ff.PASSWORD,
                 ff.OPT: False,
                 ff.DESCR: 'Password (minimum 6 characters)'
-            },
-            {
-                ff.FLD_NM: 'role',
-                ff.QSTN: 'Role:',
-                ff.PARAM_TYPE: ff.QUERY_STR,
-                'choices_endpoint': '/options/roles',
-                ff.OPT: True,
-                ff.DEFAULT: 'user',
-                ff.DESCR: 'Select user role'
             }
         ]
         
@@ -91,7 +81,7 @@ class Register(Resource):
                 username=data.get('username'),
                 email=data.get('email'),
                 password=data.get('password'),
-                role=data.get('role', 'user')
+                role='user'  # Force all new registrations to be regular users
             )
             
             return {
@@ -255,3 +245,45 @@ class SavedPark(Resource):
             return {'Error': str(e)}, 400
         except Exception as e:
             return {'Error': str(e)}, 500
+
+
+# Admin model for creating admin users
+admin_create_model = auth_ns.model('CreateAdmin', {
+    'username': fields.String(required=True, description='Username'),
+    'email': fields.String(required=True, description='Email address'),
+    'password': fields.String(required=True, description='Password')
+})
+
+
+@auth_ns.route('/admin/create')
+class CreateAdminUser(Resource):
+    """Admin-only endpoint to create new admin users."""
+    
+    @auth_ns.expect(admin_create_model)
+    @auth_ns.doc(description='Create admin user (admin only)',
+                 security='Bearer')
+    @admin_required
+    def post(self, current_user):
+        """Create a new admin user. Only accessible to existing admins."""
+        data = request.json
+        if not data:
+            return {'Error': 'Request body must contain JSON data'}, 400
+        
+        try:
+            username = uqry.create_user(
+                username=data.get('username'),
+                email=data.get('email'),
+                password=data.get('password'),
+                role='admin'  # Force admin role
+            )
+            
+            return {
+                'message': 'Admin user created successfully',
+                'username': username,
+                'created_by': current_user['username']
+            }, 201
+            
+        except ValueError as e:
+            return {'Error': str(e)}, 400
+        except Exception as e:
+            return {'Error': f'Admin creation failed: {str(e)}'}, 500

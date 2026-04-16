@@ -21,6 +21,10 @@ login_model = auth_ns.model('Login', {
     'password': fields.String(required=True, description='Password')
 })
 
+saved_park_model = auth_ns.model('SavedPark', {
+    'park_code': fields.String(required=True, description='Park code to save (e.g., yell, grca)')
+})
+
 
 @auth_ns.route('/register-form')
 class RegisterForm(Resource):
@@ -203,6 +207,7 @@ class SavedParks(Resource):
     
     @auth_ns.doc(description='Add park to saved list (requires token)',
                  security='Bearer')
+    @auth_ns.expect(saved_park_model)
     @token_required
     def post(self, current_user):
         """Add a park to saved list."""

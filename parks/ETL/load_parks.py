@@ -41,6 +41,8 @@ CITY = 'city'
 IMAGES = 'images'
 WEATHER_INFO = 'weather_info'
 DESIGNATION = 'designation'
+ENTRANCE_FEES = 'entrance_fees'
+ENTRANCE_PASSES = 'entrance_passes'
 
 # JSON field mapping (source -> our schema)
 FIELD_MAP = {
@@ -61,6 +63,8 @@ FIELD_MAP = {
     'images': IMAGES,
     'weatherInfo': WEATHER_INFO,
     'designation': DESIGNATION,
+    'entranceFees': ENTRANCE_FEES,
+    'entrancePasses': ENTRANCE_PASSES,
 }
 
 

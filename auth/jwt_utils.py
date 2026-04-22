@@ -1,4 +1,4 @@
-
+"""JWT utilities for authentication."""
 import jwt
 import os
 from datetime import datetime, timedelta
@@ -6,7 +6,9 @@ from functools import wraps
 from flask import request
 
 # Secret key for JWT (should be in environment variable in production)
-SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-change-in-production')
+SECRET_KEY = os.environ.get(
+    'JWT_SECRET_KEY', 'dev-secret-change-in-production'
+)
 ALGORITHM = 'HS256'
 TOKEN_EXPIRY_HOURS = 24
 
@@ -14,11 +16,11 @@ TOKEN_EXPIRY_HOURS = 24
 def generate_token(username: str, role: str) -> str:
     """
     Generate a JWT token for a user.
-    
+
     Args:
         username: User's username
         role: User's role (admin, user, etc.)
-    
+
     Returns:
         JWT token string
     """
@@ -34,13 +36,13 @@ def generate_token(username: str, role: str) -> str:
 def decode_token(token: str) -> dict:
     """
     Decode and validate a JWT token.
-    
+
     Args:
         token: JWT token string
-    
+
     Returns:
         Decoded payload dictionary
-    
+
     Raises:
         ValueError: If token is expired or invalid
     """
@@ -57,21 +59,21 @@ def get_token_from_header() -> str:
     """
     Extract token from Authorization header.
     Expected format: "Bearer <token>"
-    
+
     Returns:
         Token string
-    
+
     Raises:
         ValueError: If token is missing or invalid format
     """
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         raise ValueError('Authorization header is missing')
-    
+
     parts = auth_header.split()
     if len(parts) != 2 or parts[0].lower() != 'bearer':
         raise ValueError('Invalid header format. Use: Bearer <token>')
-    
+
     return parts[1]
 
 
@@ -79,7 +81,7 @@ def token_required(f):
     """
     Decorator to protect routes that require authentication.
     Adds 'current_user' to kwargs with user info from token.
-    
+
     Usage:
         @app.route('/protected')
         @token_required
@@ -91,20 +93,20 @@ def token_required(f):
         try:
             token = get_token_from_header()
             payload = decode_token(token)
-            
+
             # Add user info to kwargs
             kwargs['current_user'] = {
                 'username': payload['username'],
                 'role': payload['role']
             }
-            
+
             return f(*args, **kwargs)
-            
-        except ValueError as e:
-            return ({'Error': str(e)}, 401)
-        except Exception as e:
+
+        except ValueError as err:
+            return ({'Error': str(err)}, 401)
+        except Exception:
             return ({'Error': 'Authentication failed'}, 401)
-    
+
     return decorated
 
 
@@ -118,22 +120,22 @@ def admin_required(f):
         try:
             token = get_token_from_header()
             payload = decode_token(token)
-            
+
             # Check if user is admin
             if payload.get('role') != 'admin':
                 return ({'Error': 'Admin access required'}, 403)
-            
+
             # Add user info to kwargs
             kwargs['current_user'] = {
                 'username': payload['username'],
                 'role': payload['role']
             }
-            
+
             return f(*args, **kwargs)
-            
-        except ValueError as e:
-            return ({'Error': str(e)}, 401)
-        except Exception as e:
+
+        except ValueError as err:
+            return ({'Error': str(err)}, 401)
+        except Exception:
             return ({'Error': 'Authentication failed'}, 401)
-    
+
     return decorated

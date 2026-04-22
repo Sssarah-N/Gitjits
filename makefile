@@ -28,6 +28,8 @@ all_tests: FORCE
 	cd $(CITIES_DIR); make tests
 	cd $(STATES_DIR); make tests
 	cd $(COUNTRIES_DIR); make tests
+	cd $(AUTH_DIR); make tests
+	cd $(USERS_DIR); make tests
 	cd $(EXAMPLES_DIR); make tests
 	cd $(DB_DIR); make tests
 	cd $(PARKS_DIR); make tests

@@ -6,6 +6,8 @@ from flask import Flask, request
 from flask_restx import Resource, Api, Namespace
 from flask_cors import CORS
 
+from auth.jwt_utils import admin_required
+
 import cities.queries as cqry
 import states.queries as sqry
 import countries.queries as coqry
@@ -121,16 +123,20 @@ class City(Resource):
         return {'City': cqry.get(city_id)}
 
     @api.expect(models['city'])
+    @api.doc(security='Bearer')
     @handle_errors
-    def put(self, city_id):
-        """Update a city by MongoDB ObjectId."""
+    @admin_required
+    def put(self, city_id, current_user):
+        """Update a city by MongoDB ObjectId (admin only)."""
         cqry.update(city_id, request.json)
         updated = cqry.get(city_id)
         return {'City': updated}
 
+    @api.doc(security='Bearer')
     @handle_errors
-    def delete(self, city_id):
-        """Delete a city by MongoDB ObjectId."""
+    @admin_required
+    def delete(self, city_id, current_user):
+        """Delete a city by MongoDB ObjectId (admin only)."""
         cqry.delete(city_id)
         return {'Message': f'City {city_id} deleted'}
 
@@ -187,9 +193,11 @@ class Countries(Resource):
 
     @api.expect(models['country'])
     @api.response(201, 'Created')
+    @api.doc(security='Bearer')
     @handle_errors
-    def post(self):
-        """Create a new country."""
+    @admin_required
+    def post(self, current_user):
+        """Create a new country (admin only)."""
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
@@ -209,16 +217,20 @@ class Country(Resource):
         return {'Country': coqry.get(code)}
 
     @api.expect(models['country'])
+    @api.doc(security='Bearer')
     @handle_errors
-    def put(self, code):
-        """Update a country by ISO code."""
+    @admin_required
+    def put(self, code, current_user):
+        """Update a country by ISO code (admin only)."""
         coqry.update(code, request.json)
         updated = coqry.get(code)
         return {'Country': updated}
 
+    @api.doc(security='Bearer')
     @handle_errors
-    def delete(self, code):
-        """Delete a country by ISO code."""
+    @admin_required
+    def delete(self, code, current_user):
+        """Delete a country by ISO code (admin only)."""
         coqry.delete(code)
         return {'Message': f'Country {code} deleted'}
 
@@ -238,9 +250,11 @@ class StatesByCountry(Resource):
 
     @api.expect(models['state'])
     @api.response(201, 'Created')
+    @api.doc(security='Bearer')
     @handle_errors
-    def post(self, country_code):
-        """Create a new state under a country."""
+    @admin_required
+    def post(self, country_code, current_user):
+        """Create a new state under a country (admin only)."""
         data = request.json or {}
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
@@ -269,16 +283,20 @@ class StateByCode(Resource):
         return {'State': sqry.get(state_code, country_code)}
 
     @api.expect(models['state'])
+    @api.doc(security='Bearer')
     @handle_errors
-    def put(self, country_code, state_code):
-        """Update a state by country and state code."""
+    @admin_required
+    def put(self, country_code, state_code, current_user):
+        """Update a state by country and state code (admin only)."""
         sqry.update(state_code, country_code, request.json)
         updated = sqry.get(state_code, country_code)
         return {'State': updated}
 
+    @api.doc(security='Bearer')
     @handle_errors
-    def delete(self, country_code, state_code):
-        """Delete a state by country and state code."""
+    @admin_required
+    def delete(self, country_code, state_code, current_user):
+        """Delete a state by country and state code (admin only)."""
         sqry.delete(state_code, country_code)
         return {'Message': f'State {state_code} in {country_code} deleted'}
 
@@ -301,9 +319,11 @@ class CitiesInState(Resource):
 
     @api.expect(models['city'])
     @api.response(201, 'Created')
+    @api.doc(security='Bearer')
     @handle_errors
-    def post(self, country_code, state_code):
-        """Create a city under a given country+state."""
+    @admin_required
+    def post(self, country_code, state_code, current_user):
+        """Create a city under a given country+state (admin only)."""
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
@@ -338,9 +358,11 @@ class Parks(Resource):
 
     @api.expect(models['park'])
     @api.response(201, 'Created')
+    @api.doc(security='Bearer')
     @handle_errors
-    def post(self):
-        """Create a new park."""
+    @admin_required
+    def post(self, current_user):
+        """Create a new park (admin only)."""
         data = request.json
         if not data:
             return {'Error': 'Request body must contain JSON data'}, 400
@@ -362,9 +384,11 @@ class ParkByCode(Resource):
             return {'Error': f'Park not found: {park_code}'}, 404
         return {'Park': park}
 
+    @api.doc(security='Bearer')
     @handle_errors
-    def delete(self, park_code):
-        """Delete a park by park code."""
+    @admin_required
+    def delete(self, park_code, current_user):
+        """Delete a park by park code (admin only)."""
         pqry.delete(park_code)
         return {'Message': f'Park {park_code} deleted'}
 
@@ -373,11 +397,12 @@ class ParkByCode(Resource):
 class ParkById(Resource):
     """Update park by MongoDB ObjectId."""
 
-    @api.doc(params={'park_id': 'MongoDB ObjectId'})
+    @api.doc(params={'park_id': 'MongoDB ObjectId'}, security='Bearer')
     @api.expect(models['park'])
     @handle_errors
-    def put(self, park_id):
-        """Update a park by MongoDB ObjectId."""
+    @admin_required
+    def put(self, park_id, current_user):
+        """Update a park by MongoDB ObjectId (admin only)."""
         pqry.update(park_id, request.json)
         # After update, we need park_code to fetch - get from request
         park_code = request.json.get('park_code')

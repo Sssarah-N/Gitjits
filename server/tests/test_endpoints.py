@@ -13,8 +13,13 @@ import pytest
 import server.endpoints as ep
 import cities.queries as cqry
 import parks.queries as pqry
+from auth.jwt_utils import generate_token
 
 TEST_CLIENT = ep.app.test_client()
+
+# Admin auth header for protected endpoints
+ADMIN_TOKEN = generate_token('test_admin', 'admin')
+ADMIN_HEADERS = {'Authorization': f'Bearer {ADMIN_TOKEN}'}
 
 # Default test country/state for nested city routes
 TEST_COUNTRY = 'US'
@@ -44,7 +49,7 @@ def ensure_test_country_exists(country_code=TEST_COUNTRY):
         TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
             "name": f"Test Country {country_code}",
             "code": country_code
-        })
+        }, headers=ADMIN_HEADERS)
 
 
 def ensure_test_state_exists(country_code=TEST_COUNTRY, state_code=TEST_STATE):
@@ -59,7 +64,8 @@ def ensure_test_state_exists(country_code=TEST_COUNTRY, state_code=TEST_STATE):
                 "name": f"Test State {state_code}",
                 "state_code": state_code,
                 "country_code": country_code
-            }
+            },
+            headers=ADMIN_HEADERS
         )
 
 
@@ -85,7 +91,8 @@ def create_test_city(test_client):
         ensure_test_state_exists(country_code, state_code)
         resp = test_client.post(
             f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}/cities",
-            json={"name": name}
+            json={"name": name},
+            headers=ADMIN_HEADERS
         )
         return resp.get_json()[ep.CITY_RESP]["_id"]
     return _create_city
@@ -114,7 +121,8 @@ def create_test_park(test_client):
             "description": description,
             "park_code": park_code
         }
-        resp = test_client.post(ep.PARKS_EPS, json=park_data)
+        resp = test_client.post(ep.PARKS_EPS, json=park_data,
+                                headers=ADMIN_HEADERS)
         resp_json = resp.get_json()
         park_info = resp_json.get('Park') or resp_json.get('Parks')
         returned_code = park_info.get('park_code', park_code)
@@ -141,14 +149,15 @@ def test_cities_post_via_nested_route():
     ensure_test_state_exists()
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json={"name": "Test City"}
+        json={"name": "Test City"},
+        headers=ADMIN_HEADERS
     )
     resp_json = resp.get_json()
     assert resp.status_code == CREATED
     assert ep.CITY_RESP in resp_json
     assert "_id" in resp_json[ep.CITY_RESP]
     city_id = resp_json[ep.CITY_RESP]['_id']
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_cities_post_with_state_code():
@@ -156,14 +165,16 @@ def test_cities_post_with_state_code():
     ensure_test_state_exists(TEST_COUNTRY, "MA")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/MA/cities",
-        json={"name": "Boston"}
+        json={"name": "Boston"},
+        headers=ADMIN_HEADERS
     )
     resp_json = resp.get_json()
     assert resp.status_code == CREATED
     assert ep.CITY_RESP in resp_json
     assert "_id" in resp_json[ep.CITY_RESP]
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{resp_json[ep.CITY_RESP]['_id']}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{resp_json[ep.CITY_RESP]['_id']}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_cities_post_missing_name():
@@ -171,7 +182,8 @@ def test_cities_post_missing_name():
     ensure_test_state_exists()
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json={"population": 100000}
+        json={"population": 100000},
+        headers=ADMIN_HEADERS
     )
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -182,7 +194,8 @@ def test_cities_post_invalid_data_type():
     ensure_test_state_exists()
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json="not a dict"
+        json="not a dict",
+        headers=ADMIN_HEADERS
     )
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -194,7 +207,8 @@ def test_city_get_valid():
     ensure_test_state_exists(TEST_COUNTRY, "WA")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/WA/cities",
-        json={"name": "Seattle"}
+        json={"name": "Seattle"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
@@ -205,7 +219,7 @@ def test_city_get_valid():
     assert ep.CITY_RESP in resp_json
     assert resp_json[ep.CITY_RESP]["name"] == "Seattle"
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_city_get_not_found():
@@ -242,13 +256,15 @@ def test_city_put_valid():
     ensure_test_state_exists(TEST_COUNTRY, "OR")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/OR/cities",
-        json={"name": "Portland"}
+        json={"name": "Portland"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Update the city
     resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}",
-                           json={"name": "Portland", "state_code": "ME"})
+                           json={"name": "Portland", "state_code": "ME"},
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.CITY_RESP in resp_json
@@ -258,13 +274,14 @@ def test_city_put_valid():
     resp_json = resp.get_json()
     assert resp_json[ep.CITY_RESP]["state_code"] == "ME"
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_city_put_not_found():
     """Test updating a city that doesn't exist."""
     resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/507f1f77bcf86cd799439011",
-                           json={"name": "Ghost City"})
+                           json={"name": "Ghost City"},
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -276,17 +293,19 @@ def test_city_put_invalid_data_type():
     ensure_test_state_exists(TEST_COUNTRY, "CO")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/CO/cities",
-        json={"name": "Denver"}
+        json={"name": "Denver"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Try to update with invalid data
-    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json="not a dict")
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json="not a dict",
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == BAD_REQUEST
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_city_put_empty_body():
@@ -295,15 +314,17 @@ def test_city_put_empty_body():
     ensure_test_state_exists(TEST_COUNTRY, "AZ")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/AZ/cities",
-        json={"name": "Phoenix"}
+        json={"name": "Phoenix"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Update with empty dict (should still work, just no changes)
-    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json={})
+    resp = TEST_CLIENT.put(f"{ep.CITIES_EPS}/{city_id}", json={},
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 # DELETE Tests
@@ -313,12 +334,14 @@ def test_city_delete_valid():
     ensure_test_state_exists(TEST_COUNTRY, "FL")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/FL/cities",
-        json={"name": "Miami"}
+        json={"name": "Miami"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Delete the city
-    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.MESSAGE in resp_json
@@ -331,12 +354,14 @@ def test_city_delete_and_verify_removed():
     ensure_test_state_exists(TEST_COUNTRY, "FL")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/FL/cities",
-        json={"name": "Tampa"}
+        json={"name": "Tampa"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Delete the city
-    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
     # Verify it's gone
@@ -348,7 +373,8 @@ def test_city_delete_and_verify_removed():
 
 def test_city_delete_not_found():
     """Test deleting a city that doesn't exist."""
-    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/507f1f77bcf86cd799439011")
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/507f1f77bcf86cd799439011",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -360,16 +386,19 @@ def test_city_delete_twice():
     ensure_test_state_exists(TEST_COUNTRY, "FL")
     resp = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/FL/cities",
-        json={"name": "Orlando"}
+        json={"name": "Orlando"},
+        headers=ADMIN_HEADERS
     )
     city_id = resp.get_json()[ep.CITY_RESP]["_id"]
 
     # Delete once
-    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
     # Try to delete again
-    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    resp = TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -384,15 +413,18 @@ def test_cities_in_state_via_nested_route():
     # Create cities in the state
     resp1 = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json={"name": "Houston"}
+        json={"name": "Houston"},
+        headers=ADMIN_HEADERS
     )
     resp2 = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json={"name": "Dallas"}
+        json={"name": "Dallas"},
+        headers=ADMIN_HEADERS
     )
     resp3 = TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json={"name": "Austin"}
+        json={"name": "Austin"},
+        headers=ADMIN_HEADERS
     )
 
     city_id_1 = resp1.get_json()[ep.CITY_RESP]["_id"]
@@ -411,9 +443,9 @@ def test_cities_in_state_via_nested_route():
                  if city.get('name') in ['Houston', 'Dallas', 'Austin']]
     assert len(tx_cities) >= 3
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_1}")
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_2}")
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_3}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_1}", headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_2}", headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id_3}", headers=ADMIN_HEADERS)
 
 
 # ============= TESTS USING FIXTURES =============
@@ -423,7 +455,8 @@ def test_city_post_with_fixture(test_client, sample_city_data):
     ensure_test_state_exists()
     resp = test_client.post(
         f"{ep.COUNTRIES_EPS}/{TEST_COUNTRY}/states/{TEST_STATE}/cities",
-        json=sample_city_data
+        json=sample_city_data,
+        headers=ADMIN_HEADERS
     )
     assert resp.status_code == CREATED
     resp_json = resp.get_json()
@@ -431,7 +464,7 @@ def test_city_post_with_fixture(test_client, sample_city_data):
     assert "_id" in resp_json[ep.CITY_RESP]
 
     city_id = resp_json[ep.CITY_RESP]['_id']
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_city_get_with_fixture(test_client, create_test_city):
@@ -444,7 +477,7 @@ def test_city_get_with_fixture(test_client, create_test_city):
     resp_json = resp.get_json()
     assert resp_json[ep.CITY_RESP]["name"] == "Chicago"
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_city_update_with_fixture(test_client, create_test_city):
@@ -454,11 +487,12 @@ def test_city_update_with_fixture(test_client, create_test_city):
 
     resp = test_client.put(
         f"{ep.CITIES_EPS}/{city_id}",
-        json={"name": "San Francisco", "state_code": "OR"}
+        json={"name": "San Francisco", "state_code": "OR"},
+        headers=ADMIN_HEADERS
     )
     assert resp.status_code == OK
 
-    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}")
+    TEST_CLIENT.delete(f"{ep.CITIES_EPS}/{city_id}", headers=ADMIN_HEADERS)
 
 
 def test_update_nonexistent_city():
@@ -484,7 +518,8 @@ def test_states_post_via_nested_route():
     # First create the country (use unique code to avoid conflicts)
     country_code = get_unique_code('S')
     TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
-        "name": "Test Country SP", "code": country_code})
+        "name": "Test Country SP", "code": country_code},
+        headers=ADMIN_HEADERS)
 
     state_code = get_unique_code('T')
     resp = TEST_CLIENT.post(
@@ -494,7 +529,8 @@ def test_states_post_via_nested_route():
             "state_code": state_code,
             "capital": "Test Capital",
             "population": 1000000
-        }
+        },
+        headers=ADMIN_HEADERS
     )
     resp_json = resp.get_json()
     assert resp.status_code == CREATED
@@ -504,8 +540,10 @@ def test_states_post_via_nested_route():
 
     # Cleanup using nested route
     TEST_CLIENT.delete(
-        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}")
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}",
+        headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_state_get_via_nested_route():
@@ -513,7 +551,8 @@ def test_state_get_via_nested_route():
     # First create the country
     country_code = get_unique_code('G')
     TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
-        "name": "Test Country SG", "code": country_code})
+        "name": "Test Country SG", "code": country_code},
+        headers=ADMIN_HEADERS)
 
     state_code = get_unique_code('T')
     TEST_CLIENT.post(
@@ -523,7 +562,8 @@ def test_state_get_via_nested_route():
             "state_code": state_code,
             "capital": "Test Capital",
             "population": 12800000
-        }
+        },
+        headers=ADMIN_HEADERS
     )
 
     # Get via nested route
@@ -536,8 +576,10 @@ def test_state_get_via_nested_route():
 
     # Cleanup
     TEST_CLIENT.delete(
-        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}")
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}",
+        headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_state_put_via_nested_route():
@@ -545,7 +587,8 @@ def test_state_put_via_nested_route():
     # First create the country
     country_code = get_unique_code('U')
     TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
-        "name": "Test Country ZZ", "code": country_code})
+        "name": "Test Country ZZ", "code": country_code},
+        headers=ADMIN_HEADERS)
 
     state_code = get_unique_code('Z')
     TEST_CLIENT.post(
@@ -555,7 +598,8 @@ def test_state_put_via_nested_route():
             "state_code": state_code,
             "capital": "Old Capital",
             "population": 12800000
-        }
+        },
+        headers=ADMIN_HEADERS
     )
 
     update_resp = TEST_CLIENT.put(
@@ -564,7 +608,8 @@ def test_state_put_via_nested_route():
             "name": "Updated State",
             "capital": "New Capital",
             "population": 13000000
-        }
+        },
+        headers=ADMIN_HEADERS
     )
 
     assert update_resp.status_code == OK
@@ -575,8 +620,10 @@ def test_state_put_via_nested_route():
 
     # Cleanup
     TEST_CLIENT.delete(
-        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}")
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code}",
+        headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_states_by_country():
@@ -584,18 +631,21 @@ def test_states_by_country():
     # Create a country
     country_code = get_unique_code('C')
     TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
-        "name": "Test Country BC", "code": country_code})
+        "name": "Test Country BC", "code": country_code},
+        headers=ADMIN_HEADERS)
 
     # Create some states via nested route
     state_code1 = get_unique_code('A')
     state_code2 = get_unique_code('B')
     TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{country_code}/states",
-        json={"name": "State A", "state_code": state_code1}
+        json={"name": "State A", "state_code": state_code1},
+        headers=ADMIN_HEADERS
     )
     TEST_CLIENT.post(
         f"{ep.COUNTRIES_EPS}/{country_code}/states",
-        json={"name": "State B", "state_code": state_code2}
+        json={"name": "State B", "state_code": state_code2},
+        headers=ADMIN_HEADERS
     )
 
     # Get states by country
@@ -607,10 +657,13 @@ def test_states_by_country():
 
     # Cleanup
     TEST_CLIENT.delete(
-        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code1}")
+        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code1}",
+        headers=ADMIN_HEADERS)
     TEST_CLIENT.delete(
-        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code2}")
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+        f"{ep.COUNTRIES_EPS}/{country_code}/states/{state_code2}",
+        headers=ADMIN_HEADERS)
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_state_get_not_found():
@@ -674,20 +727,23 @@ def test_countries_post():
                                   "code": code,
                                   "capital": "Ottawa",
                                   "population": 38000000,
-                                  "continent": "North America"})
+                                  "continent": "North America"},
+                            headers=ADMIN_HEADERS)
     resp_json = resp.get_json()
     assert resp.status_code == CREATED
     assert ep.COUNTRY_RESP in resp_json
     assert "code" in resp_json[ep.COUNTRY_RESP]
 
     country_code = resp_json[ep.COUNTRY_RESP]["code"]
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_countries_post_missing_name():
     """Test creating country without required name field."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"code": "XX"})
+                            json={"code": "XX"},
+                            headers=ADMIN_HEADERS)
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
     assert resp.status_code == BAD_REQUEST
@@ -696,7 +752,8 @@ def test_countries_post_missing_name():
 def test_countries_post_missing_code():
     """Test creating country without required code field."""
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"name": "Test Country"})
+                            json={"name": "Test Country"},
+                            headers=ADMIN_HEADERS)
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
     assert resp.status_code == BAD_REQUEST
@@ -704,7 +761,8 @@ def test_countries_post_missing_code():
 
 def test_countries_post_invalid_data_type():
     """Test creating country with non-dict data."""
-    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json="not a dict")
+    resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json="not a dict",
+                            headers=ADMIN_HEADERS)
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
     assert resp.status_code == BAD_REQUEST
@@ -721,7 +779,8 @@ def test_country_get_valid():
             "capital": "Tokyo",
             "population": 126000000,
             "continent": "Asia"
-        }
+        },
+        headers=ADMIN_HEADERS
     )
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
@@ -731,7 +790,8 @@ def test_country_get_valid():
     assert ep.COUNTRY_RESP in resp_json
     assert resp_json[ep.COUNTRY_RESP]["name"] == "Japan"
 
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_country_get_not_found():
@@ -752,7 +812,8 @@ def test_country_put_valid():
             "code": code,
             "capital": "Test Capital",
             "population": 128000000
-        }
+        },
+        headers=ADMIN_HEADERS
     )
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
@@ -763,7 +824,8 @@ def test_country_put_valid():
             "capital": "New Capital",
             "population": 130000000,
             "continent": "Test Continent"
-        }
+        },
+        headers=ADMIN_HEADERS
     )
 
     assert update_resp.status_code == OK
@@ -772,13 +834,15 @@ def test_country_put_valid():
     assert data["population"] == 130000000
     assert data.get("continent") == "Test Continent"
 
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_country_put_not_found():
     """Test updating a country that doesn't exist."""
     resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/ZZ",
-                           json={"name": "Ghost Country"})
+                           json={"name": "Ghost Country"},
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -788,39 +852,47 @@ def test_country_put_invalid_data_type():
     """Test updating a country with non-dict data."""
     code = get_unique_code('T')
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"name": "Test Country", "code": code})
+                            json={"name": "Test Country", "code": code},
+                            headers=ADMIN_HEADERS)
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
     resp = TEST_CLIENT.put(
-        f"{ep.COUNTRIES_EPS}/{country_code}", json="not a dict")
+        f"{ep.COUNTRIES_EPS}/{country_code}", json="not a dict",
+        headers=ADMIN_HEADERS)
     assert resp.status_code == BAD_REQUEST
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
 
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_country_put_empty_body():
     """Test updating a country with empty dict."""
     code = get_unique_code('B')
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"name": "Brazil", "code": code})
+                            json={"name": "Brazil", "code": code},
+                            headers=ADMIN_HEADERS)
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
-    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_code}", json={})
+    resp = TEST_CLIENT.put(f"{ep.COUNTRIES_EPS}/{country_code}", json={},
+                           headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
-    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_country_delete_valid():
     """Test deleting a country with valid code."""
     code = get_unique_code('D')
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}", json={
-        "name": "Test Country to Delete", "code": code})
+        "name": "Test Country to Delete", "code": code},
+        headers=ADMIN_HEADERS)
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
-    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.MESSAGE in resp_json
@@ -831,10 +903,12 @@ def test_country_delete_and_verify_removed():
     """Test that deleted country is actually removed."""
     code = get_unique_code('T')
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"name": "Temporary Country", "code": code})
+                            json={"name": "Temporary Country", "code": code},
+                            headers=ADMIN_HEADERS)
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
-    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
     resp = TEST_CLIENT.get(f"{ep.COUNTRIES_EPS}/{country_code}")
@@ -845,7 +919,8 @@ def test_country_delete_and_verify_removed():
 
 def test_country_delete_not_found():
     """Test deleting a country that doesn't exist."""
-    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/ZZ")
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/ZZ",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -855,13 +930,16 @@ def test_country_delete_twice():
     """Test deleting the same country twice (should fail second time)."""
     code = get_unique_code('O')
     resp = TEST_CLIENT.post(f"{ep.COUNTRIES_EPS}",
-                            json={"name": "One-time Country", "code": code})
+                            json={"name": "One-time Country", "code": code},
+                            headers=ADMIN_HEADERS)
     country_code = resp.get_json()[ep.COUNTRY_RESP]["code"]
 
-    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
-    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}")
+    resp = TEST_CLIENT.delete(f"{ep.COUNTRIES_EPS}/{country_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -887,7 +965,8 @@ def test_park_get_by_code(test_client, create_test_park):
     data = resp.get_json()
     assert 'Park' in data
     # Cleanup
-    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_park_get_by_state(test_client, create_test_park):
@@ -899,7 +978,8 @@ def test_park_get_by_state(test_client, create_test_park):
     assert 'Parks' in data
     assert any(p['state_code'] == 'TX' for p in data['Parks'])
     # Cleanup
-    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    test_client.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                       headers=ADMIN_HEADERS)
 
 
 def test_park_delete_valid():
@@ -911,7 +991,8 @@ def test_park_delete_valid():
         "state_code": "TX"
     })
 
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.MESSAGE in resp_json
@@ -928,7 +1009,8 @@ def test_park_delete_and_verify_removed():
     })
 
     # Delete the park
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
     # Verify it's gone
@@ -938,7 +1020,8 @@ def test_park_delete_and_verify_removed():
 
 def test_park_delete_not_found():
     """Test deleting a park that doesn't exist."""
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/fakepk")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/fakepk",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -954,11 +1037,13 @@ def test_park_delete_twice():
     })
 
     # Delete once
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == OK
 
     # Delete again - should fail
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/{park_code}",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == NOT_FOUND
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -967,7 +1052,8 @@ def test_park_delete_twice():
 def test_park_delete_invalid_code():
     """Test deleting with invalid park code format."""
     # Invalid chars in park code should return 400
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/invalid!")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/code/invalid!",
+                              headers=ADMIN_HEADERS)
     assert resp.status_code == BAD_REQUEST
     resp_json = resp.get_json()
     assert ep.ERROR in resp_json
@@ -975,6 +1061,7 @@ def test_park_delete_invalid_code():
 
 def test_park_delete_empty_code():
     """Test deleting with empty park code."""
-    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/")
+    resp = TEST_CLIENT.delete(f"{ep.PARKS_EPS}/",
+                              headers=ADMIN_HEADERS)
     # This hits the collection endpoint, not individual park
     assert resp.status_code in [BAD_REQUEST, NOT_FOUND, 405]

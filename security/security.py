@@ -208,22 +208,23 @@ def token_required(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Authentication phase - catch only auth-related errors
         try:
             token = get_token_from_header()
             payload = decode_token(token)
-
-            # Add user info to kwargs
-            kwargs['current_user'] = {
-                'username': payload['username'],
-                'role': payload['role']
-            }
-
-            return f(*args, **kwargs)
-
         except ValueError as err:
             return ({'Error': str(err)}, 401)
         except Exception:
             return ({'Error': 'Authentication failed'}, 401)
+
+        # Add user info to kwargs
+        kwargs['current_user'] = {
+            'username': payload['username'],
+            'role': payload['role']
+        }
+
+        # Call the wrapped function - let its exceptions propagate
+        return f(*args, **kwargs)
 
     return decorated
 
@@ -244,25 +245,26 @@ def admin_required(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Authentication phase - catch only auth-related errors
         try:
             token = get_token_from_header()
             payload = decode_token(token)
-
-            # Check if user is admin
-            if payload.get('role') != 'admin':
-                return ({'Error': 'Admin access required'}, 403)
-
-            # Add user info to kwargs
-            kwargs['current_user'] = {
-                'username': payload['username'],
-                'role': payload['role']
-            }
-
-            return f(*args, **kwargs)
-
         except ValueError as err:
             return ({'Error': str(err)}, 401)
         except Exception:
             return ({'Error': 'Authentication failed'}, 401)
+
+        # Check if user is admin
+        if payload.get('role') != 'admin':
+            return ({'Error': 'Admin access required'}, 403)
+
+        # Add user info to kwargs
+        kwargs['current_user'] = {
+            'username': payload['username'],
+            'role': payload['role']
+        }
+
+        # Call the wrapped function - let its exceptions propagate
+        return f(*args, **kwargs)
 
     return decorated

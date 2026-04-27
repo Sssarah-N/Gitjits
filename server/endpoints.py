@@ -20,7 +20,14 @@ from server.dev_endpoints import dev_ns
 # App Setup
 # =============================================================================
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:3000",
+            "https://gitjits-frontend.vercel.app"
+        ]
+    }
+})
 api = Api(app, title='Geographic Data API', version='1.0',
           description='API for managing cities, states, countries, '
                       'and national parks',

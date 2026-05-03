@@ -488,6 +488,18 @@ class ParksActivities(Resource):
         """Get all unique activities."""
         activities = pqry.get_all_activities()
         return {'activities': activities, 'count': len(activities)}
+    
+@parks_ns.route('/topics')
+class ParksTopics(Resource):
+    """Get all available park topics."""
+
+    @api.doc(description='Get list of all unique topcs across all parks')
+    @api.response(200, 'Success')
+    @handle_errors
+    def get(self):
+        """Get all unique topics."""
+        topics = pqry.get_all_topics()
+        return {'topics': topics, 'count': len(topics)}
 
 
 @parks_ns.route('/designations')

@@ -32,6 +32,7 @@ LATITUDE = 'latitude'
 LONGITUDE = 'longitude'
 URL = 'url'
 ACTIVITIES = 'activities'
+TOPICS = 'topics'
 CONTACTS = 'contacts'
 DIRECTIONS_INFO = 'directions_info'
 DIRECTIONS_URL = 'directions_url'
@@ -242,6 +243,11 @@ def get_all_activities() -> list:
     """Get all unique activities across all parks."""
     dbc.connect_db()
     return sorted(dbc.distinct(PARK_COLLECTION, ACTIVITIES))
+
+def get_all_topics() -> list:
+    """Get all unique topics across all parks."""
+    dbc.connect_db()
+    return sorted(dbc.distinct(PARK_COLLECTION, TOPICS))
 
 
 def get_all_designations() -> list:

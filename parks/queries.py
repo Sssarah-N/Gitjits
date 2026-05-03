@@ -244,6 +244,7 @@ def get_all_activities() -> list:
     dbc.connect_db()
     return sorted(dbc.distinct(PARK_COLLECTION, ACTIVITIES))
 
+
 def get_all_topics() -> list:
     """Get all unique topics across all parks."""
     dbc.connect_db()

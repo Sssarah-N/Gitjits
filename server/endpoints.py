@@ -488,7 +488,8 @@ class ParksActivities(Resource):
         """Get all unique activities."""
         activities = pqry.get_all_activities()
         return {'activities': activities, 'count': len(activities)}
-    
+
+
 @parks_ns.route('/topics')
 class ParksTopics(Resource):
     """Get all available park topics."""

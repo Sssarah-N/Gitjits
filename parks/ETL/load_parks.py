@@ -32,6 +32,7 @@ LATITUDE = 'latitude'
 LONGITUDE = 'longitude'
 URL = 'url'
 ACTIVITIES = 'activities'
+TOPICS = 'topics'
 CONTACTS = 'contacts'
 DIRECTIONS_INFO = 'directions_info'
 DIRECTIONS_URL = 'directions_url'
@@ -55,6 +56,7 @@ FIELD_MAP = {
     'longitude': LONGITUDE,
     'url': URL,
     'activities': ACTIVITIES,
+    'topics': TOPICS,
     'contacts': CONTACTS,
     'directionsInfo': DIRECTIONS_INFO,
     'directionsUrl': DIRECTIONS_URL,
@@ -117,6 +119,11 @@ def transform(parks: list) -> list:
                     if dest_field == ACTIVITIES and isinstance(value, list):
                         value = [a.get('name') for a in value if 'name' in a]
 
+                    # Extract topic names from topic objects
+                    if dest_field == TOPICS and isinstance(value, list):
+                        value = [t.get('name') for t in value if 'name' in t]
+                        print("TRANSFORMED TOPICS:", value[:3])
+    
                     # Normalize state codes to uppercase
                     if dest_field == STATE_CODE and value:
                         value = [state.strip().upper() for state in value.split(',') if state.strip()]

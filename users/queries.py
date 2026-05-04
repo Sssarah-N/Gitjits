@@ -5,6 +5,7 @@ Starting with just password hashing.
 import bcrypt
 from datetime import datetime
 import data.db_connect as dbc
+import data.email as em
 
 USER_COLLECTION = 'users'
 
@@ -63,7 +64,7 @@ def create_user(username: str, email: str, password: str,
 
     # Clean up inputs
     username = username.strip().lower()
-    email = email.strip().lower()
+    email = str(em.StandardEmail(email.strip()))  # validates & lowercases
 
     # Check if username already exists
     if dbc.exists(USER_COLLECTION, {USERNAME: username}):

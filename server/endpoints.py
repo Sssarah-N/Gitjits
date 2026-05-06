@@ -459,22 +459,39 @@ class ParksFilter(Resource):
     @api.doc(params={
         'name': 'Park name (partial match, case-insensitive)',
         'state': 'State code (e.g., CA, NY)',
-        'designation': 'Park designation (e.g., National Park)',
-        'activity': 'Activity name (e.g., Hiking, Camping)'
+        'designation': 'Park designation (partial match)',
+        'activity': 'Activity name (e.g., Hiking, Camping)',
+        'topic': 'Topic name (exact match on stored topic value)',
+        'page': 'Page number (1-based, default 1)',
+        'per_page': 'Results per page (default 12, max 100)',
     })
     @api.response(200, 'Success', models['parks_list'])
     @handle_errors
     def get(self):
-        """Search parks with combined filters."""
+        """Search parks with combined filters and pagination."""
         filters = {
             'name': request.args.get('name', '').strip(),
             'state': request.args.get('state', '').strip(),
             'designation': request.args.get('designation', '').strip(),
-            'activity': request.args.get('activity', '').strip()
+            'activity': request.args.get('activity', '').strip(),
+            'topic': request.args.get('topic', '').strip(),
         }
         filters = {k: v for k, v in filters.items() if v}
-        parks = pqry.search(filters)
-        return {'Parks': parks, 'count': len(parks)}
+
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=12, type=int)
+        page = max(1, page)
+        per_page = max(1, min(per_page, 100))
+        skip = (page - 1) * per_page
+
+        parks, total = pqry.search(filters, skip=skip, limit=per_page)
+        return {
+            'Parks': parks,
+            'count': total,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+        }
 
 
 @parks_ns.route('/activities')

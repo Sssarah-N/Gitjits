@@ -2,7 +2,11 @@
 This file deals with our national parks data.
 Uses park_code as the primary key (from NPS dataset).
 """
+from __future__ import annotations
+
 import math
+from typing import Optional, Tuple
+
 from bson import ObjectId
 import data.db_connect as dbc
 from data.db_connect import update as db_update
@@ -191,7 +195,11 @@ def delete(park_code: str):
     return ret
 
 
-def search(filters: dict) -> list:
+def search(
+    filters: dict,
+    skip: int = 0,
+    limit: Optional[int] = None,
+) -> Tuple[list, int]:
     """
     Search parks with multiple filter criteria.
 
@@ -199,35 +207,40 @@ def search(filters: dict) -> list:
         filters: dict with optional keys:
             - name: str (partial match, case-insensitive)
             - state: str (state code, e.g., 'CA')
-            - designation: str (exact match)
+            - designation: str (partial match, case-insensitive)
             - activity: str (parks containing this activity)
+            - topic: str (parks containing this topic)
+        skip: offset into the full result set (for pagination)
+        limit: max number of parks to return; None returns all matches
 
     Returns:
-        List of matching parks
+        (parks_page, total_count) where parks_page is the sliced list
     """
     dbc.connect_db()
 
     query = {}
 
-    # State filter
     if filters.get('state'):
         query[STATE_CODE] = filters['state'].upper()
 
-    # Designation filter (exact match)
-    if filters.get('designation'):
-        query[DESIGNATION] = filters['designation']
-
-    # Activity filter (parks containing this activity)
     if filters.get('activity'):
         query[ACTIVITIES] = filters['activity']
 
-    # Execute query
+    if filters.get('topic'):
+        query[TOPICS] = filters['topic']
+
     if query:
         parks = dbc.read_many(PARK_COLLECTION, query)
     else:
         parks = dbc.read(PARK_COLLECTION)
 
-    # Name filter (applied in Python for partial matching)
+    if filters.get('designation'):
+        dq = filters['designation'].lower()
+        parks = [
+            p for p in parks
+            if dq in (p.get(DESIGNATION) or '').lower()
+        ]
+
     if filters.get('name'):
         name_query = filters['name'].lower()
         parks = [
@@ -236,7 +249,11 @@ def search(filters: dict) -> list:
             or name_query in p.get('full_name', '').lower()
         ]
 
-    return parks
+    total = len(parks)
+    if limit is not None:
+        parks = parks[skip:skip + limit]
+
+    return parks, total
 
 
 def get_all_activities() -> list:
